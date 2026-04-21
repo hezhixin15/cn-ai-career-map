@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 职业风险敞口图谱 · 821个中国岗位</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#08090f;
+  --bg2:#0d1117;
+  --bg3:#111820;
+  --bg4:#162030;
+  --border:#1e2d40;
+  --border2:#253850;
+  --text:#d4dde8;
+  --text2:#8a9ab8;
+  --text3:#4a5a70;
+  --acc:#3b82f6;
+  --acc2:#60a5fa;
+  --red:#ef4444;
+  --yellow:#f59e0b;
+  --green:#22c55e;
+  --font:'Noto Sans SC',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* HEADER */
+.hdr{
+  height:58px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;position:sticky;top:0;z-index:200;
+  background:rgba(8,9,15,0.96);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+}
+.hdr-left{display:flex;align-items:center;gap:14px;}
+.hdr-badge{
+  background:linear-gradient(135deg,#1d4ed8,#7c3aed);
+  border-radius:8px;padding:6px 10px;font-size:16px;line-height:1;
+}
+.hdr-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:.3px;}
+.hdr-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.hdr-stats{display:flex;gap:20px;}
+.hdr-stat .v{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--acc2);}
+.hdr-stat .l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
+
+/* LAYOUT */
+.wrap{display:flex;height:calc(100vh - 58px);}
+
+/* SIDEBAR */
+.sidebar{
+  width:260px;min-width:260px;
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-body{flex:1;overflow-y:auto;overflow-x:hidden;}
+.sb-body::-webkit-scrollbar{width:3px;}
+.sb-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.sb-section{padding:12px 14px;border-bottom:1px solid var(--border);}
+.sb-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+
+/* Search */
+.search-wrap{position:relative;}
+.search-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);}
+.search-inp{
+  width:100%;padding:7px 9px 7px 28px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:12px;outline:none;
+  font-family:var(--font);transition:border-color .15s;
+}
+.search-inp:focus{border-color:var(--acc);}
+.search-inp::placeholder{color:var(--text3);}
+
+/* Legend */
+.legend-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);margin-bottom:5px;}
+.legend-row{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);}
+
+/* Stats box */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.stat-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;padding:8px 10px;
+}
+.stat-box .v{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--acc2);}
+.stat-box .l{font-size:10px;color:var(--text3);margin-top:2px;}
+
+/* Distribution */
+.dist{margin-top:8px;}
+.dist-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.dist-num{font-family:var(--mono);font-size:9px;color:var(--text3);width:14px;text-align:right;}
+.dist-bg{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.dist-fill{height:100%;border-radius:3px;transition:width .4s;}
+.dist-cnt{font-size:9px;color:var(--text3);width:24px;}
+
+/* Categories */
+.cat-all,.cat-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 8px;border-radius:5px;cursor:pointer;
+  transition:background .12s;border:1px solid transparent;
+  margin-bottom:2px;
+}
+.cat-all:hover,.cat-item:hover{background:var(--bg3);}
+.cat-all.active,.cat-item.active{background:var(--bg4);border-color:var(--border2);}
+.cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cat-name{font-size:11px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cat-meta{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.cat-cnt{font-size:10px;color:var(--text3);}
+.cat-avg{font-size:10px;font-weight:700;font-family:var(--mono);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Toolbar */
+.toolbar{
+  padding:8px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;background:var(--bg2);flex-shrink:0;
+}
+.view-btn{
+  padding:5px 12px;border-radius:5px;border:1px solid var(--border);
+  background:transparent;color:var(--text3);font-size:11px;cursor:pointer;
+  transition:all .12s;font-family:var(--font);
+}
+.view-btn.act{background:var(--bg4);border-color:var(--border2);color:var(--acc2);}
+.sort-sel{
+  padding:5px 8px;border-radius:5px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text2);font-size:11px;outline:none;cursor:pointer;
+  font-family:var(--font);
+}
+.tb-status{font-size:11px;color:var(--text3);margin-left:auto;}
+.tb-hint{font-size:10px;color:var(--text3);background:var(--bg3);padding:3px 8px;border-radius:10px;border:1px solid var(--border);}
+
+/* TREEMAP */
+#tm-wrap{flex:1;overflow:hidden;position:relative;}
+#tm-svg{display:block;}
+.tm-cell{cursor:pointer;}
+.tm-cell rect{transition:opacity .12s;}
+.tm-cell:hover rect{opacity:.75!important;}
+
+/* TABLE */
+#tbl-wrap{flex:1;overflow-y:auto;display:none;}
+#tbl-wrap::-webkit-scrollbar{width:5px;}
+#tbl-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.dtable{width:100%;border-collapse:collapse;}
+.dtable th{
+  position:sticky;top:0;z-index:10;background:var(--bg2);
+  padding:9px 14px;text-align:left;font-size:10px;font-weight:600;
+  color:var(--text3);text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  font-family:var(--font);
+}
+.dtable th:hover{color:var(--acc2);}
+.dtable td{padding:8px 14px;border-bottom:1px solid rgba(30,45,64,.5);font-size:12px;color:var(--text2);}
+.dtable tr:hover td{background:rgba(13,17,23,.8);}
+.score-chip{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:20px;border-radius:4px;
+  font-size:11px;font-weight:700;color:#fff;font-family:var(--mono);
+}
+.risk-bar-row{display:flex;align-items:center;gap:7px;}
+.risk-bar-bg{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.risk-bar-f{height:100%;border-radius:2px;}
+
+/* TOOLTIP */
+.tip{
+  position:fixed;z-index:500;
+  background:rgba(8,9,15,.97);border:1px solid var(--border2);
+  border-radius:10px;padding:13px 15px;min-width:210px;max-width:280px;
+  box-shadow:0 12px 40px rgba(0,0,0,.6);
+  pointer-events:none;opacity:0;transition:opacity .12s;
+}
+.tip.on{opacity:1;}
+.tip-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;}
+.tip-cat{font-size:10px;color:var(--text3);margin-bottom:8px;}
+.tip-score-row{display:flex;align-items:flex-end;gap:8px;margin-bottom:6px;}
+.tip-score-n{font-family:var(--mono);font-size:28px;font-weight:700;line-height:1;}
+.tip-score-l{font-size:11px;color:var(--text3);line-height:1.4;}
+.tip-badge{
+  font-size:11px;font-weight:600;padding:3px 9px;
+  border-radius:10px;display:inline-block;margin-bottom:7px;
+}
+.tip-rat{font-size:11px;color:var(--text2);line-height:1.5;}
+.tip-edit{font-size:10px;color:var(--text3);margin-top:6px;font-style:italic;}
+
+/* DETAIL PANEL */
+.detail{
+  position:fixed;right:0;top:58px;
+  width:300px;height:calc(100vh - 58px);
+  background:var(--bg2);border-left:1px solid var(--border);
+  padding:18px;overflow-y:auto;
+  transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);
+  z-index:100;
+}
+.detail.open{transform:translateX(0);}
+.detail::-webkit-scrollbar{width:3px;}
+.detail::-webkit-scrollbar-thumb{background:var(--border2);}
+.d-close{
+  position:absolute;top:12px;right:12px;
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+}
+.d-close:hover{background:var(--bg4);}
+.d-score-ring{
+  width:72px;height:72px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:26px;font-weight:700;color:#fff;
+  margin:14px auto;border:3px solid;
+}
+.d-name{text-align:center;font-size:18px;font-weight:700;color:#fff;margin-bottom:3px;}
+.d-cat{text-align:center;font-size:11px;color:var(--text3);margin-bottom:12px;}
+.d-badge{
+  display:block;text-align:center;padding:5px 16px;
+  border-radius:16px;font-size:12px;font-weight:600;
+  margin:0 auto 16px;width:fit-content;border:1px solid;
+}
+.d-sec{margin-bottom:14px;}
+.d-sec-t{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.d-sec-body{font-size:12px;color:var(--text2);line-height:1.7;}
+.d-meter{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.d-meter-bg{flex:1;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.d-meter-f{height:100%;border-radius:4px;}
+.d-similar-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;
+}
+.d-similar-item:hover{opacity:.8;}
+
+/* EDIT SCORE */
+.d-edit-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.d-edit-label{font-size:11px;color:var(--text2);}
+.d-edit-inp{
+  width:50px;padding:4px 7px;border-radius:5px;
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font-size:12px;font-family:var(--mono);outline:none;text-align:center;
+}
+.d-edit-inp:focus{border-color:var(--acc);}
+.d-edit-btn{
+  padding:4px 10px;background:var(--acc);border:none;border-radius:5px;
+  color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);
+}
+.d-edit-btn:hover{opacity:.85;}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:var(--bg4);border:1px solid var(--border2);
+  border-radius:7px;padding:8px 18px;font-size:12px;color:var(--acc2);
+  transition:transform .25s;z-index:9999;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-badge">🤖</div>
+    <div>
+      <div class="hdr-title">AI 职业风险敞口图谱</div>
+      <div class="hdr-sub">中国大陆 · 821个岗位 · 21个学科门类</div>
+    </div>
+  </div>
+  <div class="hdr-stats">
+    <div class="hdr-stat" style="text-align:center">
+      <div class="v" id="hv-total">821</div>
+      <div class="l">职业总数</div>
+    </div>
+    <div class="hdr-stat" style="text-align:center">
+      <div class="v" id="hv-avg">5.96</div>
+      <div class="l">平均风险分</div>
+    </div>
+    <div class="hdr-stat" style="text-align:center">
+      <div class="v" id="hv-high">43.7%</div>
+      <div class="l">高危比例 ≥7</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="sidebar">
+    <div class="sb-body">
+      <div class="sb-section">
+        <div class="sb-label">搜索职业</div>
+        <div class="search-wrap">
+          <span class="search-ico">🔍</span>
+          <input class="search-inp" id="search" placeholder="职业名称 / 学科…" oninput="doSearch(this.value)">
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-label">颜色图例</div>
+        <div class="legend-bar"></div>
+        <div class="legend-row">
+          <span>0 极低风险</span><span>5 中等</span><span>10 最高</span>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-label">综合统计</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="v" id="sv-avg">5.96</div>
+            <div class="l">加权平均分</div>
+          </div>
+          <div class="stat-box">
+            <div class="v" id="sv-high">43.7%</div>
+            <div class="l">高危 ≥7</div>
+          </div>
+          <div class="stat-box">
+            <div class="v" id="sv-mid">23.7%</div>
+            <div class="l">中等 4-6</div>
+          </div>
+          <div class="stat-box">
+            <div class="v" id="sv-low">32.6%</div>
+            <div class="l">低危 ≤3</div>
+          </div>
+        </div>
+        <div class="dist" id="dist-chart"></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-label">按学科筛选</div>
+        <div id="cat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="toolbar">
+      <button class="view-btn act" id="btn-tm" onclick="switchView('treemap')">🗺 热力图</button>
+      <button class="view-btn" id="btn-tb" onclick="switchView('table')">📋 列表</button>
+      <select class="sort-sel" id="sort-sel" onchange="doSort(this.value)">
+        <option value="default">按学科门类</option>
+        <option value="desc">风险 高→低</option>
+        <option value="asc">风险 低→高</option>
+        <option value="name">职业名称</option>
+      </select>
+      <span class="tb-hint">💡 点击职业可手动修改评分</span>
+      <span class="tb-status" id="tb-status">显示 821 个职业</span>
+    </div>
+
+    <div id="tm-wrap"><svg id="tm-svg"></svg></div>
+    <div id="tbl-wrap">
+      <table class="dtable">
+        <thead>
+          <tr>
+            <th onclick="doSort('name')">职业名称</th>
+            <th onclick="doSort('cat')">学科门类</th>
+            <th onclick="doSort('desc')" style="width:80px">风险分</th>
+            <th style="width:90px">风险等级</th>
+            <th style="width:150px">风险程度</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+<div class="detail" id="detail"><button class="d-close" onclick="closeDetail()">✕</button><div id="d-content"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA =====
+const DATA = [{"id":1,"cat":"军事学","name":"军事参谋","score":5,"rationale":"战略规划与情报分析需人机协作"},{"id":2,"cat":"军事学","name":"军事后勤保障员","score":3,"rationale":"实地保障任务为主，现场性强"},{"id":3,"cat":"军事学","name":"军事外交官","score":4,"rationale":"高度依赖人际关系与实时判断"},{"id":4,"cat":"军事学","name":"军事指挥员","score":3,"rationale":"实战指挥需临场决策，难被替代"},{"id":5,"cat":"军事学","name":"军事教官","score":2,"rationale":"体能训练与实战演练为核心"},{"id":6,"cat":"军事学","name":"军事研究员","score":7,"rationale":"信息整合分析工作大量可数字化"},{"id":7,"cat":"军事学","name":"军事翻译","score":8,"rationale":"翻译工作高度数字化，AI已能胜任"},{"id":8,"cat":"军事学","name":"军事装备管理员","score":4,"rationale":"实物管理与现场操作为主"},{"id":9,"cat":"军事学","name":"军事训练教官","score":2,"rationale":"以体能训练与战术演练为核心"},{"id":10,"cat":"军事学","name":"军事记者","score":7,"rationale":"采写编发流程大量可被AI辅助"},{"id":11,"cat":"农学","name":"乡村规划师","score":6,"rationale":"规划分析可AI辅助，需实地勘察"},{"id":12,"cat":"农学","name":"兽医师","score":4,"rationale":"临床检查和手术操作需现场进行"},{"id":13,"cat":"农学","name":"农业人工智能工程师","score":8,"rationale":"核心工作在计算机上完成"},{"id":14,"cat":"农学","name":"农业大数据分析师","score":8,"rationale":"数据分析高度数字化"},{"id":15,"cat":"农学","name":"农业技术员","score":3,"rationale":"以田间操作和现场指导为主"},{"id":16,"cat":"农学","name":"农业技术推广员","score":3,"rationale":"以现场推广和人际交流为主"},{"id":17,"cat":"农学","name":"农业推广员","score":3,"rationale":"现场推广，人际互动为核心"},{"id":18,"cat":"农学","name":"农业机器人工程师","score":7,"rationale":"设计开发工作主要在计算机上"},{"id":19,"cat":"农学","name":"农业机械工程师","score":5,"rationale":"设计与现场调试相结合"},{"id":20,"cat":"农学","name":"农业机械师","score":2,"rationale":"机械维修操作以动手为主"},{"id":21,"cat":"农学","name":"农业电商运营","score":7,"rationale":"运营工作高度数字化"},{"id":22,"cat":"农学","name":"农业经济管理师","score":6,"rationale":"数据分析与管理咨询可AI辅助"},{"id":23,"cat":"农学","name":"农产品加工师","score":2,"rationale":"以动手加工操作为主"},{"id":24,"cat":"农学","name":"农产品检验员","score":4,"rationale":"物理检测需现场，文档可AI辅助"},{"id":25,"cat":"农学","name":"农产品电商运营经理","score":7,"rationale":"运营管理工作主要在线进行"},{"id":26,"cat":"农学","name":"农产品质量安全检测员","score":4,"rationale":"实验室检测需亲身操作"},{"id":27,"cat":"农学","name":"农艺师","score":4,"rationale":"田间管理与技术指导结合现场"},{"id":28,"cat":"农学","name":"动物防疫员","score":3,"rationale":"以现场防疫操作为主"},{"id":29,"cat":"农学","name":"园林设计师","score":6,"rationale":"设计可AI辅助，需现场勘察"},{"id":30,"cat":"农学","name":"园艺师","score":3,"rationale":"以现场种植与养护为主"},{"id":31,"cat":"农学","name":"园艺设计师","score":6,"rationale":"方案设计可大量AI辅助"},{"id":32,"cat":"农学","name":"土壤肥料师","score":4,"rationale":"田间采样与分析结合"},{"id":33,"cat":"农学","name":"智慧养殖工程师","score":6,"rationale":"技术开发与现场管理结合"},{"id":34,"cat":"农学","name":"智慧农业技术员","score":5,"rationale":"技术操作与现场维护混合"},{"id":35,"cat":"农学","name":"智慧种植工程师","score":6,"rationale":"系统开发主要在计算机上"},{"id":36,"cat":"农学","name":"有机农业技术员","score":3,"rationale":"以田间有机管理为主"},{"id":37,"cat":"农学","name":"林业工程师","score":4,"rationale":"野外调查与林业管理为主"},{"id":38,"cat":"农学","name":"林业技术员","score":3,"rationale":"以现场林业操作为主"},{"id":39,"cat":"农学","name":"森林保护员","score":2,"rationale":"野外巡护，现场性极强"},{"id":40,"cat":"农学","name":"植物保护师","score":4,"rationale":"田间病虫害防治需现场"},{"id":41,"cat":"农学","name":"植物保护技术员","score":3,"rationale":"以现场植保操作为主"},{"id":42,"cat":"农学","name":"水产养殖师","score":3,"rationale":"以现场养殖管理为主"},{"id":43,"cat":"农学","name":"水产技术员","score":3,"rationale":"现场技术操作为主"},{"id":44,"cat":"农学","name":"渔业技术员","score":3,"rationale":"现场渔业操作为主"},{"id":45,"cat":"农学","name":"生态农业工程师","score":5,"rationale":"规划设计与现场实施结合"},{"id":46,"cat":"农学","name":"畜牧师","score":3,"rationale":"以现场养殖管理为主"},{"id":47,"cat":"农学","name":"种子技术员","score":3,"rationale":"以田间育种操作为主"},{"id":48,"cat":"农学","name":"种子检验员","score":4,"rationale":"实验室检验需亲身操作"},{"id":49,"cat":"农学","name":"精准农业工程师","score":6,"rationale":"数据分析与系统开发为主"},{"id":50,"cat":"农学","name":"食品检验员","score":4,"rationale":"实验室检测需现场操作"},{"id":51,"cat":"农学","name":"食品研发员","score":5,"rationale":"实验室研发与配方分析结合"},{"id":52,"cat":"农学","name":"食品质量安全管理员","score":5,"rationale":"文档与现场检查相结合"},{"id":53,"cat":"医学","name":"中医健康管理师","score":4,"rationale":"望闻问切需人工，方案可AI辅助"},{"id":54,"cat":"医学","name":"中医师","score":4,"rationale":"临床诊断高度依赖经验与人工"},{"id":55,"cat":"医学","name":"中药师","score":5,"rationale":"配药与用药指导结合，部分可AI辅助"},{"id":56,"cat":"医学","name":"临床药师","score":5,"rationale":"用药审核与指导需专业判断"},{"id":57,"cat":"医学","name":"主管护师","score":4,"rationale":"护理管理结合临床操作"},{"id":58,"cat":"医学","name":"互联网医疗医生","score":7,"rationale":"以线上问诊文字交流为主"},{"id":59,"cat":"医学","name":"产科医生","score":3,"rationale":"分娩接产需亲临现场"},{"id":60,"cat":"医学","name":"传染病医师","score":4,"rationale":"临床诊治与现场流调结合"},{"id":61,"cat":"医学","name":"作业治疗师","score":3,"rationale":"以康复训练现场操作为主"},{"id":62,"cat":"医学","name":"健康管理师","score":5,"rationale":"评估与方案制定可AI辅助"},{"id":63,"cat":"医学","name":"儿科医生","score":4,"rationale":"儿童临床诊治依赖现场"},{"id":64,"cat":"医学","name":"儿童康复师","score":3,"rationale":"以现场康复训练为主"},{"id":65,"cat":"医学","name":"公共卫生医师","score":5,"rationale":"流调与政策制定混合"},{"id":66,"cat":"医学","name":"内科医生","score":5,"rationale":"诊断分析可AI辅助，需临床"},{"id":67,"cat":"医学","name":"助产士","score":2,"rationale":"分娩助产以现场操作为核心"},{"id":68,"cat":"医学","name":"医学研究员","score":7,"rationale":"文献研究与数据分析可大量AI辅助"},{"id":69,"cat":"医学","name":"医学编辑","score":8,"rationale":"文字编辑处理高度数字化"},{"id":70,"cat":"医学","name":"医生","score":5,"rationale":"诊断可AI辅助，临床操作需人工"},{"id":71,"cat":"医学","name":"医疗器械销售","score":5,"rationale":"人际关系销售，部分数字化"},{"id":72,"cat":"医学","name":"医疗大数据分析师","score":8,"rationale":"数据分析工作完全数字化"},{"id":73,"cat":"医学","name":"医药代表","score":5,"rationale":"面对面拜访为主，文档可AI辅助"},{"id":74,"cat":"医学","name":"医院行政人员","score":6,"rationale":"行政文档处理大量可AI辅助"},{"id":75,"cat":"医学","name":"卫生监督员","score":4,"rationale":"现场执法检查为主"},{"id":76,"cat":"医学","name":"口腔科医生","score":3,"rationale":"口腔手术操作需亲临现场"},{"id":77,"cat":"医学","name":"在线问诊医生","score":7,"rationale":"以数字化问诊交流为主"},{"id":78,"cat":"医学","name":"基因检测顾问","score":7,"rationale":"报告解读与咨询可大量AI辅助"},{"id":79,"cat":"医学","name":"外科医生","score":2,"rationale":"手术操作以精细动手为核心"},{"id":80,"cat":"医学","name":"妇产科医生","score":3,"rationale":"妇产临床操作需亲临现场"},{"id":81,"cat":"医学","name":"妇科医生","score":3,"rationale":"临床检查与手术需现场"},{"id":82,"cat":"医学","name":"家庭康复师","score":3,"rationale":"上门康复训练以现场操作为主"},{"id":83,"cat":"医学","name":"康复治疗师","score":3,"rationale":"以现场康复治疗操作为主"},{"id":84,"cat":"医学","name":"康复科医生","score":4,"rationale":"临床诊断与方案制定结合"},{"id":85,"cat":"医学","name":"影像技师","score":5,"rationale":"设备操作现场，图像分析可AI辅助"},{"id":86,"cat":"医学","name":"影像科医生","score":6,"rationale":"图像分析AI已大量介入"},{"id":87,"cat":"医学","name":"心理健康管理师","score":5,"rationale":"心理评估与辅导需人际互动"},{"id":88,"cat":"医学","name":"心电图医师","score":6,"rationale":"心电图分析AI已能高效辅助"},{"id":89,"cat":"医学","name":"急诊科医生","score":3,"rationale":"急症处置需实时现场操作"},{"id":90,"cat":"医学","name":"护士","score":3,"rationale":"临床护理以现场操作为核心"},{"id":91,"cat":"医学","name":"护士长","score":4,"rationale":"护理管理结合临床操作"},{"id":92,"cat":"医学","name":"护师","score":3,"rationale":"临床护理操作为主"},{"id":93,"cat":"医学","name":"护理部主任","score":5,"rationale":"管理决策与文档工作结合"},{"id":94,"cat":"医学","name":"推拿师","score":1,"rationale":"手法操作完全依赖人工"},{"id":95,"cat":"医学","name":"放射科医师","score":6,"rationale":"放射图像分析AI辅助显著"},{"id":96,"cat":"医学","name":"放射科医生","score":6,"rationale":"影像判读AI已大量介入"},{"id":97,"cat":"医学","name":"数字医疗产品经理","score":8,"rationale":"产品规划与文档工作高度数字化"},{"id":98,"cat":"医学","name":"智慧医疗工程师","score":7,"rationale":"系统开发工作主要在计算机上"},{"id":99,"cat":"医学","name":"核医学医师","score":5,"rationale":"核医学检查结合图像分析"},{"id":100,"cat":"医学","name":"检验技师","score":4,"rationale":"实验室检验需亲身操作"},{"id":101,"cat":"医学","name":"检验科医生","score":5,"rationale":"检验结果分析可AI辅助"},{"id":102,"cat":"医学","name":"物理治疗师","score":3,"rationale":"以现场物理治疗操作为主"},{"id":103,"cat":"医学","name":"病案管理员","score":7,"rationale":"病案数字化处理高度可AI辅助"},{"id":104,"cat":"医学","name":"病理技师","score":4,"rationale":"组织切片制作需手工操作"},{"id":105,"cat":"医学","name":"病理科医生","score":6,"rationale":"病理图像分析AI已大量介入"},{"id":106,"cat":"医学","name":"皮肤科医生","score":5,"rationale":"皮肤病诊断AI辅助已较成熟"},{"id":107,"cat":"医学","name":"眼科医生","score":5,"rationale":"眼底图像分析AI辅助显著"},{"id":108,"cat":"医学","name":"社区康复师","score":3,"rationale":"社区康复以现场操作为主"},{"id":109,"cat":"医学","name":"神经科医生","score":5,"rationale":"神经系统诊断需临床判断"},{"id":110,"cat":"医学","name":"精准医疗研究员","score":7,"rationale":"基因数据分析工作数字化程度高"},{"id":111,"cat":"医学","name":"精神科医生","score":5,"rationale":"心理评估高度依赖人际互动"},{"id":112,"cat":"医学","name":"老年康复师","score":3,"rationale":"以现场老年康复护理为主"},{"id":113,"cat":"医学","name":"耳鼻喉科医生","score":4,"rationale":"内镜检查需现场操作"},{"id":114,"cat":"医学","name":"职业病医师","score":5,"rationale":"职业暴露评估结合文档分析"},{"id":115,"cat":"医学","name":"脑电图医师","score":6,"rationale":"脑电图分析AI辅助显著"},{"id":116,"cat":"医学","name":"药剂师","score":5,"rationale":"配药与用药指导结合"},{"id":117,"cat":"医学","name":"药师","score":5,"rationale":"用药管理与指导工作"},{"id":118,"cat":"医学","name":"营养健康管理师","score":5,"rationale":"方案制定可AI辅助"},{"id":119,"cat":"医学","name":"营养师","score":5,"rationale":"饮食分析与方案可AI辅助"},{"id":120,"cat":"医学","name":"言语治疗师","score":3,"rationale":"语言康复训练以现场操作为主"},{"id":121,"cat":"医学","name":"超声科医师","score":6,"rationale":"超声图像分析AI已大量介入"},{"id":122,"cat":"医学","name":"运动健康管理师","score":4,"rationale":"评估与现场运动指导结合"},{"id":123,"cat":"医学","name":"运动康复师","score":3,"rationale":"以现场运动康复操作为主"},{"id":124,"cat":"医学","name":"远程医疗医生","score":7,"rationale":"远程诊疗主要通过数字化平台"},{"id":125,"cat":"医学","name":"遗传咨询师","score":6,"rationale":"基因报告解读可大量AI辅助"},{"id":126,"cat":"医学","name":"针灸师","score":1,"rationale":"针灸手法完全依赖人工精细操作"},{"id":127,"cat":"医学","name":"预防医学医师","score":5,"rationale":"流调与预防方案制定混合"},{"id":128,"cat":"医学","name":"麻醉科医生","score":4,"rationale":"麻醉操作与监护需现场"},{"id":129,"cat":"历史学","name":"博物馆研究员","score":6,"rationale":"史料研究与写作可AI大量辅助"},{"id":130,"cat":"历史学","name":"历史研究员","score":7,"rationale":"文献整理与撰写高度数字化"},{"id":131,"cat":"历史学","name":"历史编辑","score":8,"rationale":"编辑写作工作高度数字化"},{"id":132,"cat":"历史学","name":"古籍修复师","score":3,"rationale":"手工修复技艺需精细操作"},{"id":133,"cat":"历史学","name":"地方志编纂员","score":7,"rationale":"文字整理与撰写可大量AI辅助"},{"id":134,"cat":"历史学","name":"文化遗产保护员","score":4,"rationale":"现场保护与文档工作结合"},{"id":135,"cat":"历史学","name":"文物鉴定师","score":5,"rationale":"实物鉴定需专家经验与现场"},{"id":136,"cat":"历史学","name":"考古学家","score":3,"rationale":"田野发掘以现场操作为核心"},{"id":137,"cat":"哲学","name":"企业文化顾问","score":6,"rationale":"咨询报告撰写可AI辅助"},{"id":138,"cat":"哲学","name":"伦理学家","score":7,"rationale":"研究写作工作高度数字化"},{"id":139,"cat":"哲学","name":"哲学教师","score":6,"rationale":"教学需人际互动，内容可AI辅助"},{"id":140,"cat":"哲学","name":"哲学研究员","score":7,"rationale":"文献研究与写作高度数字化"},{"id":141,"cat":"哲学","name":"宗教学研究员","score":7,"rationale":"研究写作工作主要在电脑上完成"},{"id":142,"cat":"哲学","name":"思想教育工作者","score":5,"rationale":"课堂教育与人际互动为主"},{"id":143,"cat":"哲学","name":"政策研究顾问","score":7,"rationale":"政策分析与报告撰写高度数字化"},{"id":144,"cat":"哲学","name":"美学研究员","score":7,"rationale":"研究写作工作高度数字化"},{"id":145,"cat":"哲学","name":"逻辑学家","score":7,"rationale":"逻辑分析推理可AI大量辅助"},{"id":146,"cat":"工学","name":"云计算工程师","score":8,"rationale":"系统架构与开发完全在计算机上"},{"id":147,"cat":"工学","name":"交通工程师","score":5,"rationale":"交通规划与现场勘察结合"},{"id":148,"cat":"工学","name":"健康大数据工程师","score":8,"rationale":"数据开发工作高度数字化"},{"id":149,"cat":"工学","name":"农业物联网工程师","score":6,"rationale":"系统开发结合现场部署"},{"id":150,"cat":"工学","name":"化学工程师","score":5,"rationale":"工艺设计与实验室操作结合"},{"id":151,"cat":"工学","name":"区块链工程师","score":8,"rationale":"区块链开发完全数字化"},{"id":152,"cat":"工学","name":"医疗信息工程师","score":7,"rationale":"医疗系统开发高度数字化"},{"id":153,"cat":"工学","name":"医疗器械工程师","score":5,"rationale":"产品设计与实物测试结合"},{"id":154,"cat":"工学","name":"可持续设计工程师","score":6,"rationale":"设计分析可AI辅助"},{"id":155,"cat":"工学","name":"可靠性工程师","score":6,"rationale":"可靠性分析与测试结合"},{"id":156,"cat":"工学","name":"土木工程师","score":5,"rationale":"设计与现场施工管理结合"},{"id":157,"cat":"工学","name":"增强现实工程师","score":8,"rationale":"AR开发工作完全数字化"},{"id":158,"cat":"工学","name":"增材制造工程师","score":5,"rationale":"3D打印设计与操作结合"},{"id":159,"cat":"工学","name":"大数据工程师","score":8,"rationale":"数据平台开发完全数字化"},{"id":160,"cat":"工学","name":"安全运维工程师","score":7,"rationale":"安全监控与运维主要在计算机上"},{"id":161,"cat":"工学","name":"工业APP开发工程师","score":8,"rationale":"应用开发完全在计算机上"},{"id":162,"cat":"工学","name":"工业互联网工程师","score":7,"rationale":"系统集成开发高度数字化"},{"id":163,"cat":"工学","name":"工业人工智能工程师","score":8,"rationale":"AI系统开发完全数字化"},{"id":164,"cat":"工学","name":"工业大数据工程师","score":8,"rationale":"数据开发工作完全数字化"},{"id":165,"cat":"工学","name":"工业安全工程师","score":5,"rationale":"现场安全检查与文档工作结合"},{"id":166,"cat":"工学","name":"工业工程师","score":6,"rationale":"流程优化分析可AI大量辅助"},{"id":167,"cat":"工学","name":"工业控制系统安全工程师","score":7,"rationale":"系统安全分析高度数字化"},{"id":168,"cat":"工学","name":"工业网络工程师","score":7,"rationale":"网络配置管理主要在计算机上"},{"id":169,"cat":"工学","name":"工业软件工程师","score":8,"rationale":"软件开发完全在计算机上"},{"id":170,"cat":"工学","name":"建筑信息模型工程师","score":7,"rationale":"BIM建模工作高度数字化"},{"id":171,"cat":"工学","name":"控制工程师","score":6,"rationale":"控制系统设计与调试结合"},{"id":172,"cat":"工学","name":"数字农业工程师","score":7,"rationale":"数字系统开发主要在计算机上"},{"id":173,"cat":"工学","name":"数字孪生工程师","score":8,"rationale":"数字孪生建模完全数字化"},{"id":174,"cat":"工学","name":"数字建筑工程师","score":7,"rationale":"数字建筑设计高度数字化"},{"id":175,"cat":"工学","name":"数据库管理员","score":7,"rationale":"数据库管理工作高度数字化"},{"id":176,"cat":"工学","name":"新能源工程师","score":5,"rationale":"系统设计与现场安装结合"},{"id":177,"cat":"工学","name":"新能源汽车工程师","score":6,"rationale":"技术开发与测试结合"},{"id":178,"cat":"工学","name":"无人驾驶工程师","score":7,"rationale":"算法开发与仿真测试为主"},{"id":179,"cat":"工学","name":"智慧供应链工程师","score":7,"rationale":"系统开发与数字化运营为主"},{"id":180,"cat":"工学","name":"智慧农业工程师","score":7,"rationale":"智慧系统开发高度数字化"},{"id":181,"cat":"工学","name":"智慧城市工程师","score":7,"rationale":"城市系统开发与集成为主"},{"id":182,"cat":"工学","name":"智慧环保工程师","score":6,"rationale":"系统开发与现场监测结合"},{"id":183,"cat":"工学","name":"智能交通工程师","score":7,"rationale":"交通系统开发高度数字化"},{"id":184,"cat":"工学","name":"智能制造工程师","score":6,"rationale":"制造系统设计与现场结合"},{"id":185,"cat":"工学","name":"智能制造系统集成工程师","score":6,"rationale":"系统集成需现场调试"},{"id":186,"cat":"工学","name":"智能家居工程师","score":6,"rationale":"系统开发与现场安装结合"},{"id":187,"cat":"工学","name":"智能建筑工程师","score":6,"rationale":"智能系统设计与现场结合"},{"id":188,"cat":"工学","name":"智能物流工程师","score":7,"rationale":"物流系统开发主要在计算机上"},{"id":189,"cat":"工学","name":"智能电网工程师","score":6,"rationale":"电网系统设计与现场结合"},{"id":190,"cat":"工学","name":"智能网联汽车工程师","score":7,"rationale":"网联技术开发高度数字化"},{"id":191,"cat":"工学","name":"标准化工程师","score":6,"rationale":"标准文档编写可AI大量辅助"},{"id":192,"cat":"工学","name":"物联网工程师","score":7,"rationale":"IoT系统开发高度数字化"},{"id":193,"cat":"工学","name":"环境大数据工程师","score":8,"rationale":"环境数据分析完全数字化"},{"id":194,"cat":"工学","name":"生物信息工程师","score":8,"rationale":"生物信息分析完全数字化"},{"id":195,"cat":"工学","name":"生物医学工程师","score":6,"rationale":"设备研发与实验室工作结合"},{"id":196,"cat":"工学","name":"移动应用开发工程师","score":8,"rationale":"移动应用开发完全数字化"},{"id":197,"cat":"工学","name":"精准医疗工程师","score":7,"rationale":"基因数据处理平台开发数字化"},{"id":198,"cat":"工学","name":"结构设计工程师","score":6,"rationale":"结构计算与设计可AI辅助"},{"id":199,"cat":"工学","name":"绿色建筑工程师","score":6,"rationale":"绿建设计与分析可AI辅助"},{"id":200,"cat":"工学","name":"航天工程师","score":5,"rationale":"航天系统设计与测试结合"},{"id":201,"cat":"工学","name":"航空工程师","score":5,"rationale":"航空系统设计与测试结合"},{"id":202,"cat":"工学","name":"虚拟现实工程师","score":8,"rationale":"VR开发工作完全数字化"},{"id":203,"cat":"工学","name":"计量工程师","score":5,"rationale":"计量测试与文档工作结合"},{"id":204,"cat":"工学","name":"车联网工程师","score":7,"rationale":"车联网系统开发高度数字化"},{"id":205,"cat":"工学","name":"风能工程师","score":5,"rationale":"风电系统设计与现场结合"},{"id":206,"cat":"工学-土木建筑与环境","name":"化学工艺工程师","score":5,"rationale":"工艺设计与实验室结合"},{"id":207,"cat":"工学-土木建筑与环境","name":"化工工程师","score":5,"rationale":"化工设计与现场操作结合"},{"id":208,"cat":"工学-土木建筑与环境","name":"园林工程师","score":4,"rationale":"园林施工管理需现场"},{"id":209,"cat":"工学-土木建筑与环境","name":"固废处理工程师","score":4,"rationale":"现场处理与技术管理结合"},{"id":210,"cat":"工学-土木建筑与环境","name":"地籍测绘工程师","score":5,"rationale":"测绘外业与内业数字化结合"},{"id":211,"cat":"工学-土木建筑与环境","name":"地质勘查工程师","score":3,"rationale":"野外地质勘查以现场为主"},{"id":212,"cat":"工学-土木建筑与环境","name":"地质工程师","score":4,"rationale":"现场勘查与报告撰写结合"},{"id":213,"cat":"工学-土木建筑与环境","name":"城市规划师","score":7,"rationale":"规划分析与方案设计可AI辅助"},{"id":214,"cat":"工学-土木建筑与环境","name":"大气治理工程师","score":5,"rationale":"大气监测与技术方案结合"},{"id":215,"cat":"工学-土木建筑与环境","name":"安全工程师","score":5,"rationale":"现场安全评估与文档结合"},{"id":216,"cat":"工学-土木建筑与环境","name":"岩土工程师","score":4,"rationale":"野外勘察与室内分析结合"},{"id":217,"cat":"工学-土木建筑与环境","name":"工程测量员","score":3,"rationale":"现场测量工作以户外操作为主"},{"id":218,"cat":"工学-土木建筑与环境","name":"工程资料员","score":7,"rationale":"资料管理与文档整理高度数字化"},{"id":219,"cat":"工学-土木建筑与环境","name":"工程造价师","score":7,"rationale":"造价计算与清单编制高度数字化"},{"id":220,"cat":"工学-土木建筑与环境","name":"工程预算员","score":7,"rationale":"预算编制工作高度数字化"},{"id":221,"cat":"工学-土木建筑与环境","name":"市政工程师","score":5,"rationale":"市政设计与现场管理结合"},{"id":222,"cat":"工学-土木建筑与环境","name":"建筑工程师","score":5,"rationale":"建筑设计与现场管理结合"},{"id":223,"cat":"工学-土木建筑与环境","name":"房地产开发工程师","score":5,"rationale":"项目管理与技术审查结合"},{"id":224,"cat":"工学-土木建筑与环境","name":"施工员","score":3,"rationale":"建筑施工现场管理以现场为主"},{"id":225,"cat":"工学-土木建筑与环境","name":"景观设计师","score":6,"rationale":"景观方案设计可AI大量辅助"},{"id":226,"cat":"工学-土木建筑与环境","name":"暖通工程师","score":5,"rationale":"暖通设计与现场结合"},{"id":227,"cat":"工学-土木建筑与环境","name":"桥梁工程师","score":5,"rationale":"桥梁设计与现场管理结合"},{"id":228,"cat":"工学-土木建筑与环境","name":"水利工程师","score":5,"rationale":"水利规划与现场勘察结合"},{"id":229,"cat":"工学-土木建筑与环境","name":"水处理工程师","score":4,"rationale":"水处理设施运维需现场"},{"id":230,"cat":"工学-土木建筑与环境","name":"水文工程师","score":5,"rationale":"水文监测与数据分析结合"},{"id":231,"cat":"工学-土木建筑与环境","name":"测绘工程师","score":5,"rationale":"外业测绘与内业处理结合"},{"id":232,"cat":"工学-土木建筑与环境","name":"海洋工程师","score":4,"rationale":"海洋工程以现场作业为主"},{"id":233,"cat":"工学-土木建筑与环境","name":"消防安全工程师","score":4,"rationale":"现场消防检查与方案制定结合"},{"id":234,"cat":"工学-土木建筑与环境","name":"港口工程师","score":4,"rationale":"港口工程以现场管理为主"},{"id":235,"cat":"工学-土木建筑与环境","name":"环境工程师","score":5,"rationale":"环境评估与现场监测结合"},{"id":236,"cat":"工学-土木建筑与环境","name":"环境监测工程师","score":4,"rationale":"现场采样与实验室分析结合"},{"id":237,"cat":"工学-土木建筑与环境","name":"电气安装工程师","score":3,"rationale":"电气安装以现场操作为主"},{"id":238,"cat":"工学-土木建筑与环境","name":"监理工程师","score":5,"rationale":"工程监理需长期驻场"},{"id":239,"cat":"工学-土木建筑与环境","name":"石油工程师","score":4,"rationale":"油田现场作业为主"},{"id":240,"cat":"工学-土木建筑与环境","name":"结构工程师","score":6,"rationale":"结构计算分析可AI大量辅助"},{"id":241,"cat":"工学-土木建筑与环境","name":"给排水工程师","score":5,"rationale":"给排水设计与现场结合"},{"id":242,"cat":"工学-土木建筑与环境","name":"道路工程师","score":5,"rationale":"道路设计与现场管理结合"},{"id":243,"cat":"工学-土木建筑与环境","name":"采矿工程师","score":4,"rationale":"矿山现场作业管理为主"},{"id":244,"cat":"工学-土木建筑与环境","name":"隧道工程师","score":4,"rationale":"隧道施工现场管理为主"},{"id":245,"cat":"工学-土木建筑与环境","name":"项目经理","score":6,"rationale":"项目协调管理可AI辅助"},{"id":246,"cat":"工学-机械与自动化","name":"产品结构工程师","score":6,"rationale":"结构设计工作可AI辅助"},{"id":247,"cat":"工学-机械与自动化","name":"供应链工程师","score":6,"rationale":"供应链分析与优化可AI辅助"},{"id":248,"cat":"工学-机械与自动化","name":"冲压工程师","score":4,"rationale":"冲压工艺需现场操作"},{"id":249,"cat":"工学-机械与自动化","name":"包装工程师","score":5,"rationale":"包装设计与测试结合"},{"id":250,"cat":"工学-机械与自动化","name":"地铁车辆工程师","score":5,"rationale":"车辆设计与现场检修结合"},{"id":251,"cat":"工学-机械与自动化","name":"工业机器人工程师","score":6,"rationale":"机器人编程与现场调试结合"},{"id":252,"cat":"工学-机械与自动化","name":"工业设计工程师","score":7,"rationale":"产品设计工作高度数字化"},{"id":253,"cat":"工学-机械与自动化","name":"工艺工程师","score":5,"rationale":"工艺规划与现场实施结合"},{"id":254,"cat":"工学-机械与自动化","name":"数控工程师","score":5,"rationale":"数控编程与现场加工结合"},{"id":255,"cat":"工学-机械与自动化","name":"机器人调试工程师","score":4,"rationale":"机器人调试需现场操作"},{"id":256,"cat":"工学-机械与自动化","name":"机械制造工程师","score":5,"rationale":"制造工艺设计与现场结合"},{"id":257,"cat":"工学-机械与自动化","name":"机械工程师","score":5,"rationale":"机械设计与现场结合"},{"id":258,"cat":"工学-机械与自动化","name":"机械设计工程师","score":6,"rationale":"CAD设计工作可AI辅助"},{"id":259,"cat":"工学-机械与自动化","name":"机电工程师","score":5,"rationale":"机电设计与现场调试结合"},{"id":260,"cat":"工学-机械与自动化","name":"模具工程师","score":5,"rationale":"模具设计与加工结合"},{"id":261,"cat":"工学-机械与自动化","name":"汽车动力系统工程师","score":6,"rationale":"动力系统设计高度数字化"},{"id":262,"cat":"工学-机械与自动化","name":"汽车工程师","score":5,"rationale":"整车设计与测试结合"},{"id":263,"cat":"工学-机械与自动化","name":"汽车底盘工程师","score":5,"rationale":"底盘设计与实车测试结合"},{"id":264,"cat":"工学-机械与自动化","name":"汽车电子工程师","score":6,"rationale":"电子系统开发高度数字化"},{"id":265,"cat":"工学-机械与自动化","name":"注塑工程师","score":4,"rationale":"注塑工艺需现场操作"},{"id":266,"cat":"工学-机械与自动化","name":"热处理工程师","score":4,"rationale":"热处理工艺需现场操作"},{"id":267,"cat":"工学-机械与自动化","name":"焊接工程师","score":4,"rationale":"焊接技术需现场操作"},{"id":268,"cat":"工学-机械与自动化","name":"物流工程师","score":6,"rationale":"物流系统规划与优化可AI辅助"},{"id":269,"cat":"工学-机械与自动化","name":"生产主管","score":5,"rationale":"生产现场管理需驻场"},{"id":270,"cat":"工学-机械与自动化","name":"生产工程师","score":5,"rationale":"生产优化与现场管理结合"},{"id":271,"cat":"工学-机械与自动化","name":"电气工程师","score":5,"rationale":"电气设计与现场调试结合"},{"id":272,"cat":"工学-机械与自动化","name":"电气设计工程师","score":6,"rationale":"电气设计工作高度数字化"},{"id":273,"cat":"工学-机械与自动化","name":"精益工程师","score":6,"rationale":"精益分析与改善可AI辅助"},{"id":274,"cat":"工学-机械与自动化","name":"自动化工程师","score":6,"rationale":"自动化系统设计与调试结合"},{"id":275,"cat":"工学-机械与自动化","name":"航空发动机工程师","score":5,"rationale":"发动机设计与测试结合"},{"id":276,"cat":"工学-机械与自动化","name":"航空航天工程师","score":5,"rationale":"航天系统设计与测试结合"},{"id":277,"cat":"工学-机械与自动化","name":"船舶工程师","score":5,"rationale":"船舶设计与建造管理结合"},{"id":278,"cat":"工学-机械与自动化","name":"设备工程师","score":4,"rationale":"设备维护需现场操作"},{"id":279,"cat":"工学-机械与自动化","name":"设备维护工程师","score":3,"rationale":"设备检修以现场动手为主"},{"id":280,"cat":"工学-机械与自动化","name":"质量工程师","score":5,"rationale":"质量控制与检验结合"},{"id":281,"cat":"工学-机械与自动化","name":"质量检验工程师","score":4,"rationale":"产品检验需现场操作"},{"id":282,"cat":"工学-机械与自动化","name":"轨道交通工程师","score":5,"rationale":"轨道设计与现场管理结合"},{"id":283,"cat":"工学-机械与自动化","name":"铸造工程师","score":4,"rationale":"铸造工艺需现场操作"},{"id":284,"cat":"工学-机械与自动化","name":"飞行器设计工程师","score":6,"rationale":"飞行器设计工作高度数字化"},{"id":285,"cat":"工学-机械与自动化","name":"高铁工程师","score":5,"rationale":"高铁系统设计与现场结合"},{"id":286,"cat":"工学-材料与能源","name":"光伏工程师","score":5,"rationale":"光伏系统设计与现场安装结合"},{"id":287,"cat":"工学-材料与能源","name":"制冷工程师","score":4,"rationale":"制冷系统设计与现场安装结合"},{"id":288,"cat":"工学-材料与能源","name":"制药工程师","score":5,"rationale":"药品工艺设计与车间操作结合"},{"id":289,"cat":"工学-材料与能源","name":"包装印刷工程师","score":5,"rationale":"包装设计与生产管理结合"},{"id":290,"cat":"工学-材料与能源","name":"化妆品研发工程师","score":5,"rationale":"配方研发与实验室测试结合"},{"id":291,"cat":"工学-材料与能源","name":"印刷工程师","score":4,"rationale":"印刷工艺需现场操作"},{"id":292,"cat":"工学-材料与能源","name":"发电工程师","score":4,"rationale":"发电设备运维需现场"},{"id":293,"cat":"工学-材料与能源","name":"复合材料工程师","score":5,"rationale":"材料研发与实验室测试结合"},{"id":294,"cat":"工学-材料与能源","name":"太阳能工程师","score":5,"rationale":"太阳能系统设计与安装结合"},{"id":295,"cat":"工学-材料与能源","name":"新能源材料工程师","score":5,"rationale":"材料研发与实验测试结合"},{"id":296,"cat":"工学-材料与能源","name":"无机非金属材料工程师","score":5,"rationale":"材料研发与实验结合"},{"id":297,"cat":"工学-材料与能源","name":"服装工程师","score":5,"rationale":"服装设计与制作工艺结合"},{"id":298,"cat":"工学-材料与能源","name":"材料工程师","score":5,"rationale":"材料研发与实验室工作结合"},{"id":299,"cat":"工学-材料与能源","name":"核能工程师","score":4,"rationale":"核电站运维需现场"},{"id":300,"cat":"工学-材料与能源","name":"热能工程师","score":4,"rationale":"热能设备运维需现场"},{"id":301,"cat":"工学-材料与能源","name":"生物工程工程师","score":5,"rationale":"生物工程研发与实验室结合"},{"id":302,"cat":"工学-材料与能源","name":"电力工程师","score":5,"rationale":"电力系统设计与现场结合"},{"id":303,"cat":"工学-材料与能源","name":"电力系统工程师","score":5,"rationale":"电网系统设计与调试结合"},{"id":304,"cat":"工学-材料与能源","name":"电池工程师","score":5,"rationale":"电池研发与测试结合"},{"id":305,"cat":"工学-材料与能源","name":"空调工程师","score":4,"rationale":"空调系统设计与安装结合"},{"id":306,"cat":"工学-材料与能源","name":"纺织工程师","score":4,"rationale":"纺织工艺需现场操作"},{"id":307,"cat":"工学-材料与能源","name":"药品生产工程师","score":4,"rationale":"药品生产需车间现场操作"},{"id":308,"cat":"工学-材料与能源","name":"输配电工程师","score":5,"rationale":"输配电系统设计与现场结合"},{"id":309,"cat":"工学-材料与能源","name":"造纸工程师","score":4,"rationale":"造纸工艺需现场操作"},{"id":310,"cat":"工学-材料与能源","name":"金属材料工程师","score":5,"rationale":"材料研发与实验室测试结合"},{"id":311,"cat":"工学-材料与能源","name":"风电工程师","score":5,"rationale":"风电系统设计与现场结合"},{"id":312,"cat":"工学-材料与能源","name":"食品工程师","score":4,"rationale":"食品生产工艺需现场操作"},{"id":313,"cat":"工学-材料与能源","name":"食品工艺工程师","score":4,"rationale":"食品工艺研发与生产结合"},{"id":314,"cat":"工学-材料与能源","name":"食品检验工程师","score":4,"rationale":"食品检验需实验室操作"},{"id":315,"cat":"工学-材料与能源","name":"高分子材料工程师","score":5,"rationale":"高分子材料研发与测试结合"},{"id":316,"cat":"工学-计算机与电子信息","name":"DevOps工程师","score":8,"rationale":"自动化运维开发完全数字化"},{"id":317,"cat":"工学-计算机与电子信息","name":"FPGA工程师","score":7,"rationale":"FPGA设计开发高度数字化"},{"id":318,"cat":"工学-计算机与电子信息","name":"互联网产品经理","score":8,"rationale":"互联网产品规划完全数字化"},{"id":319,"cat":"工学-计算机与电子信息","name":"产品经理","score":7,"rationale":"产品规划设计主要在计算机上"},{"id":320,"cat":"工学-计算机与电子信息","name":"人工智能工程师","score":8,"rationale":"AI系统开发完全数字化"},{"id":321,"cat":"工学-计算机与电子信息","name":"信息安全工程师","score":7,"rationale":"安全系统分析高度数字化"},{"id":322,"cat":"工学-计算机与电子信息","name":"全栈开发工程师","score":9,"rationale":"全栈开发完全在电脑上完成"},{"id":323,"cat":"工学-计算机与电子信息","name":"前端开发工程师","score":9,"rationale":"前端代码开发完全数字化"},{"id":324,"cat":"工学-计算机与电子信息","name":"半导体工艺工程师","score":5,"rationale":"芯片工艺需洁净室现场操作"},{"id":325,"cat":"工学-计算机与电子信息","name":"半导体设备工程师","score":4,"rationale":"半导体设备维护需现场操作"},{"id":326,"cat":"工学-计算机与电子信息","name":"单片机开发工程师","score":7,"rationale":"嵌入式开发高度数字化"},{"id":327,"cat":"工学-计算机与电子信息","name":"后端开发工程师","score":9,"rationale":"后端代码开发完全数字化"},{"id":328,"cat":"工学-计算机与电子信息","name":"大数据开发工程师","score":8,"rationale":"大数据平台开发完全数字化"},{"id":329,"cat":"工学-计算机与电子信息","name":"射频工程师","score":5,"rationale":"射频设计与实测结合"},{"id":330,"cat":"工学-计算机与电子信息","name":"嵌入式工程师","score":7,"rationale":"嵌入式系统开发高度数字化"},{"id":331,"cat":"工学-计算机与电子信息","name":"性能测试工程师","score":8,"rationale":"性能测试工作完全数字化"},{"id":332,"cat":"工学-计算机与电子信息","name":"技术支持工程师","score":6,"rationale":"技术支持兼现场与远程"},{"id":333,"cat":"工学-计算机与电子信息","name":"数据分析师","score":9,"rationale":"数据分析工作完全数字化"},{"id":334,"cat":"工学-计算机与电子信息","name":"数据工程师","score":8,"rationale":"数据管道开发完全数字化"},{"id":335,"cat":"工学-计算机与电子信息","name":"机器学习工程师","score":8,"rationale":"ML模型开发完全数字化"},{"id":336,"cat":"工学-计算机与电子信息","name":"测试工程师","score":7,"rationale":"软件测试工作高度数字化"},{"id":337,"cat":"工学-计算机与电子信息","name":"深度学习工程师","score":8,"rationale":"深度学习研发完全数字化"},{"id":338,"cat":"工学-计算机与电子信息","name":"渗透测试工程师","score":7,"rationale":"渗透测试分析高度数字化"},{"id":339,"cat":"工学-计算机与电子信息","name":"游戏开发工程师","score":8,"rationale":"游戏开发完全在计算机上"},{"id":340,"cat":"工学-计算机与电子信息","name":"电信工程师","score":6,"rationale":"电信网络规划与现场结合"},{"id":341,"cat":"工学-计算机与电子信息","name":"电子工程师","score":6,"rationale":"电路设计与实验室测试结合"},{"id":342,"cat":"工学-计算机与电子信息","name":"硬件工程师","score":6,"rationale":"硬件设计与实物调试结合"},{"id":343,"cat":"工学-计算机与电子信息","name":"移动端开发工程师","score":9,"rationale":"移动App开发完全数字化"},{"id":344,"cat":"工学-计算机与电子信息","name":"算法工程师","score":8,"rationale":"算法研发完全在计算机上"},{"id":345,"cat":"工学-计算机与电子信息","name":"系统架构师","score":8,"rationale":"系统架构设计完全数字化"},{"id":346,"cat":"工学-计算机与电子信息","name":"网络安全工程师","score":7,"rationale":"网络安全分析高度数字化"},{"id":347,"cat":"工学-计算机与电子信息","name":"网络工程师","score":6,"rationale":"网络规划与现场部署结合"},{"id":348,"cat":"工学-计算机与电子信息","name":"自动化测试工程师","score":8,"rationale":"自动化测试脚本开发数字化"},{"id":349,"cat":"工学-计算机与电子信息","name":"自然语言处理工程师","score":8,"rationale":"NLP模型开发完全数字化"},{"id":350,"cat":"工学-计算机与电子信息","name":"芯片验证工程师","score":7,"rationale":"芯片验证工作高度数字化"},{"id":351,"cat":"工学-计算机与电子信息","name":"计算机视觉工程师","score":8,"rationale":"CV模型开发完全数字化"},{"id":352,"cat":"工学-计算机与电子信息","name":"软件工程师","score":9,"rationale":"软件开发完全在电脑上完成"},{"id":353,"cat":"工学-计算机与电子信息","name":"运维工程师","score":7,"rationale":"服务器运维管理高度数字化"},{"id":354,"cat":"工学-计算机与电子信息","name":"通信工程师","score":6,"rationale":"通信系统设计与现场结合"},{"id":355,"cat":"工学-计算机与电子信息","name":"集成电路设计工程师","score":6,"rationale":"IC设计与仿真验证结合"},{"id":356,"cat":"教育学","name":"中学教师","score":6,"rationale":"课堂教学需人际，备课可AI辅助"},{"id":357,"cat":"教育学","name":"企业培训师","score":6,"rationale":"培训内容可AI辅助，授课需人工"},{"id":358,"cat":"教育学","name":"体育教师","score":3,"rationale":"体育技能教学需现场示范"},{"id":359,"cat":"教育学","name":"信息技术教师","score":7,"rationale":"课程内容与工具高度数字化"},{"id":360,"cat":"教育学","name":"初中教师","score":6,"rationale":"课堂教学需人际，材料可AI辅助"},{"id":361,"cat":"教育学","name":"历史教师","score":6,"rationale":"教学内容整理可AI大量辅助"},{"id":362,"cat":"教育学","name":"在线教育教师","score":7,"rationale":"在线授课内容高度数字化"},{"id":363,"cat":"教育学","name":"在线教育运营经理","score":7,"rationale":"教育运营工作主要在线进行"},{"id":364,"cat":"教育学","name":"培训师","score":6,"rationale":"培训内容开发可AI辅助"},{"id":365,"cat":"教育学","name":"大学教师","score":7,"rationale":"研究与教学内容准备可AI辅助"},{"id":366,"cat":"教育学","name":"学前教育教师","score":3,"rationale":"幼儿陪伴与互动完全需现场"},{"id":367,"cat":"教育学","name":"学校心理咨询师","score":4,"rationale":"心理咨询需面对面互动"},{"id":368,"cat":"教育学","name":"学生管理","score":5,"rationale":"学生事务管理兼数字与现场"},{"id":369,"cat":"教育学","name":"小学教师","score":5,"rationale":"小学教育需大量现场互动"},{"id":370,"cat":"教育学","name":"就业指导师","score":5,"rationale":"就业咨询需人际，信息可AI辅助"},{"id":371,"cat":"教育学","name":"幼儿园教师","score":3,"rationale":"幼儿教育完全依赖现场互动"},{"id":372,"cat":"教育学","name":"幼儿教育教师","score":3,"rationale":"幼儿教育需实时现场陪伴"},{"id":373,"cat":"教育学","name":"招生专员","score":5,"rationale":"招生咨询需人际，材料可AI辅助"},{"id":374,"cat":"教育学","name":"政治教师","score":6,"rationale":"政治课教学内容整理可AI辅助"},{"id":375,"cat":"教育学","name":"教务专员","score":6,"rationale":"教务管理文档工作高度数字化"},{"id":376,"cat":"教育学","name":"教务管理","score":6,"rationale":"教务管理主要是信息处理工作"},{"id":377,"cat":"教育学","name":"教学主管","score":6,"rationale":"教学质量管理可AI辅助"},{"id":378,"cat":"教育学","name":"教学设计师","score":7,"rationale":"课程设计工作高度数字化"},{"id":379,"cat":"教育学","name":"教育AI运营经理","score":8,"rationale":"AI教育产品运营完全数字化"},{"id":380,"cat":"教育学","name":"教育产品运营经理","score":7,"rationale":"产品运营分析工作高度数字化"},{"id":381,"cat":"教育学","name":"教育人工智能工程师","score":8,"rationale":"AI教育系统开发完全数字化"},{"id":382,"cat":"教育学","name":"教育内容运营经理","score":7,"rationale":"内容运营工作高度数字化"},{"id":383,"cat":"教育学","name":"教育咨询师","score":6,"rationale":"咨询需人际，信息整理可AI辅助"},{"id":384,"cat":"教育学","name":"教育增强现实工程师","score":7,"rationale":"AR教育系统开发数字化"},{"id":385,"cat":"教育学","name":"教育大数据分析师","score":8,"rationale":"教育数据分析完全数字化"},{"id":386,"cat":"教育学","name":"教育技术专员","score":7,"rationale":"教育技术应用高度数字化"},{"id":387,"cat":"教育学","name":"教育投资分析师","score":8,"rationale":"投资分析工作完全数字化"},{"id":388,"cat":"教育学","name":"教育数据运营经理","score":7,"rationale":"数据运营管理高度数字化"},{"id":389,"cat":"教育学","name":"教育机器人工程师","score":7,"rationale":"教育机器人开发高度数字化"},{"id":390,"cat":"教育学","name":"教育物联网工程师","score":7,"rationale":"IoT教育系统开发数字化"},{"id":391,"cat":"教育学","name":"教育用户运营经理","score":7,"rationale":"用户运营分析工作数字化"},{"id":392,"cat":"教育学","name":"教育研究员","score":7,"rationale":"教育研究写作高度数字化"},{"id":393,"cat":"教育学","name":"教育社群运营经理","score":7,"rationale":"社群运营工作主要在线进行"},{"id":394,"cat":"教育学","name":"教育科技运营经理","score":7,"rationale":"科技运营管理高度数字化"},{"id":395,"cat":"教育学","name":"教育虚拟现实工程师","score":7,"rationale":"VR教育系统开发数字化"},{"id":396,"cat":"教育学","name":"教育行政人员","score":6,"rationale":"行政管理文档工作可AI辅助"},{"id":397,"cat":"教育学","name":"数字校园工程师","score":7,"rationale":"数字校园系统开发数字化"},{"id":398,"cat":"教育学","name":"智慧校园工程师","score":7,"rationale":"智慧校园系统开发数字化"},{"id":399,"cat":"教育学","name":"智能教育研究员","score":8,"rationale":"AI教育研究高度数字化"},{"id":400,"cat":"教育学","name":"特殊教育教师","score":4,"rationale":"特殊儿童教育需大量现场互动"},{"id":401,"cat":"教育学","name":"班主任","score":4,"rationale":"班级管理高度依赖人际互动"},{"id":402,"cat":"教育学","name":"科学教师","score":6,"rationale":"科学课实验教学结合数字工具"},{"id":403,"cat":"教育学","name":"美术教师","score":5,"rationale":"美术教学需现场示范与互动"},{"id":404,"cat":"教育学","name":"职业规划师","score":5,"rationale":"职业咨询需人际，资源可AI辅助"},{"id":405,"cat":"教育学","name":"职业院校教师","score":5,"rationale":"职业技能教学需现场操作"},{"id":406,"cat":"教育学","name":"课程设计师","score":7,"rationale":"课程开发设计高度数字化"},{"id":407,"cat":"教育学","name":"课程顾问","score":6,"rationale":"课程咨询需人际，内容可AI辅助"},{"id":408,"cat":"教育学","name":"辅导员","score":5,"rationale":"学生思政工作需面对面互动"},{"id":409,"cat":"教育学","name":"音乐教师","score":4,"rationale":"音乐技能教学需现场示范"},{"id":410,"cat":"教育学","name":"高中教师","score":6,"rationale":"高中教学内容准备可AI辅助"},{"id":411,"cat":"文学","name":"UX设计师","score":8,"rationale":"用户体验设计工作高度数字化"},{"id":412,"cat":"文学","name":"主持人","score":6,"rationale":"现场主持需人际，台本可AI辅助"},{"id":413,"cat":"文学","name":"产品运营","score":7,"rationale":"产品运营分析工作高度数字化"},{"id":414,"cat":"文学","name":"企业文化专员","score":6,"rationale":"企业文化内容创作可AI辅助"},{"id":415,"cat":"文学","name":"会展策划师","score":6,"rationale":"策划方案可AI辅助，现场执行需人工"},{"id":416,"cat":"文学","name":"作家","score":7,"rationale":"写作工作高度数字化，AI可大量辅助"},{"id":417,"cat":"文学","name":"俄语教师","score":6,"rationale":"语言教学需人际互动"},{"id":418,"cat":"文学","name":"公关专员","score":6,"rationale":"公关文案可AI辅助，关系需人工"},{"id":419,"cat":"文学","name":"公关经理","score":6,"rationale":"公关策略与媒体关系管理"},{"id":420,"cat":"文学","name":"内容编辑","score":8,"rationale":"内容编辑工作完全数字化"},{"id":421,"cat":"文学","name":"内容营销专员","score":7,"rationale":"内容营销工作高度数字化"},{"id":422,"cat":"文学","name":"内容运营","score":7,"rationale":"内容运营管理高度数字化"},{"id":423,"cat":"文学","name":"出版社编辑","score":7,"rationale":"图书编辑工作高度数字化"},{"id":424,"cat":"文学","name":"剪辑师","score":7,"rationale":"视频剪辑工作高度数字化"},{"id":425,"cat":"文学","name":"博物馆讲解员","score":5,"rationale":"讲解需现场互动，内容可AI辅助"},{"id":426,"cat":"文学","name":"发行专员","score":6,"rationale":"发行工作兼数字与人际"},{"id":427,"cat":"文学","name":"口译员","score":7,"rationale":"实时口译AI已高度介入"},{"id":428,"cat":"文学","name":"同声传译","score":7,"rationale":"同传工作AI已高度冲击"},{"id":429,"cat":"文学","name":"品牌传播专员","score":7,"rationale":"品牌传播内容高度数字化"},{"id":430,"cat":"文学","name":"品牌文案","score":8,"rationale":"品牌文案写作高度数字化"},{"id":431,"cat":"文学","name":"品牌运营","score":7,"rationale":"品牌运营管理高度数字化"},{"id":432,"cat":"文学","name":"商务秘书","score":7,"rationale":"商务文档与沟通高度数字化"},{"id":433,"cat":"文学","name":"图书编辑","score":7,"rationale":"图书编辑审稿工作高度数字化"},{"id":434,"cat":"文学","name":"图书馆管理员","score":5,"rationale":"图书管理兼数字化与现场服务"},{"id":435,"cat":"文学","name":"在线教育讲师","score":7,"rationale":"在线授课内容录制高度数字化"},{"id":436,"cat":"文学","name":"导演","score":6,"rationale":"导演需现场指挥，创意可AI辅助"},{"id":437,"cat":"文学","name":"导演助理","score":5,"rationale":"现场助理工作兼数字与现场"},{"id":438,"cat":"文学","name":"小说家","score":7,"rationale":"小说创作工作高度数字化"},{"id":439,"cat":"文学","name":"广告文案","score":8,"rationale":"广告文案撰写高度数字化"},{"id":440,"cat":"文学","name":"广告策划","score":7,"rationale":"广告策划方案高度数字化"},{"id":441,"cat":"文学","name":"德语教师","score":6,"rationale":"外语教学需人际互动"},{"id":442,"cat":"文学","name":"报纸编辑","score":7,"rationale":"报纸编辑工作高度数字化"},{"id":443,"cat":"文学","name":"搜索引擎优化专员","score":8,"rationale":"SEO工作完全在计算机上"},{"id":444,"cat":"文学","name":"搜索引擎营销专员","score":8,"rationale":"SEM工作完全在计算机上"},{"id":445,"cat":"文学","name":"摄影记者","score":5,"rationale":"现场拍摄需人工，后期可AI辅助"},{"id":446,"cat":"文学","name":"播客主持人","score":6,"rationale":"播客录制与内容可AI辅助"},{"id":447,"cat":"文学","name":"播音员","score":6,"rationale":"播音需现场，稿件可AI辅助"},{"id":448,"cat":"文学","name":"教师","score":6,"rationale":"课堂教学需人际互动"},{"id":449,"cat":"文学","name":"散文家","score":7,"rationale":"文学创作工作高度数字化"},{"id":450,"cat":"文学","name":"数字内容创作者","score":8,"rationale":"数字内容创作完全数字化"},{"id":451,"cat":"文学","name":"数字出版编辑","score":8,"rationale":"数字出版工作完全数字化"},{"id":452,"cat":"文学","name":"数字营销专员","score":8,"rationale":"数字营销工作完全数字化"},{"id":453,"cat":"文学","name":"文化馆馆员","score":5,"rationale":"文化服务兼现场活动与数字工作"},{"id":454,"cat":"文学","name":"文案策划","score":8,"rationale":"文案策划写作工作高度数字化"},{"id":455,"cat":"文学","name":"新媒体编辑","score":8,"rationale":"新媒体内容创作高度数字化"},{"id":456,"cat":"文学","name":"新媒体运营","score":8,"rationale":"新媒体运营工作完全数字化"},{"id":457,"cat":"文学","name":"新闻记者","score":7,"rationale":"写作可AI辅助，新闻采集需现场"},{"id":458,"cat":"文学","name":"日语教师","score":6,"rationale":"外语教学需人际互动"},{"id":459,"cat":"文学","name":"有声书主播","score":7,"rationale":"有声书录制工作AI已大量冲击"},{"id":460,"cat":"文学","name":"期刊编辑","score":7,"rationale":"期刊编辑审稿高度数字化"},{"id":461,"cat":"文学","name":"法语教师","score":6,"rationale":"外语教学需人际互动"},{"id":462,"cat":"文学","name":"活动策划师","score":6,"rationale":"策划方案可AI辅助，执行需现场"},{"id":463,"cat":"文学","name":"活动运营","score":6,"rationale":"活动运营结合线上线下"},{"id":464,"cat":"文学","name":"用户运营","score":7,"rationale":"用户运营分析工作高度数字化"},{"id":465,"cat":"文学","name":"直播主播","score":6,"rationale":"直播互动需人工，内容可AI辅助"},{"id":466,"cat":"文学","name":"知识付费讲师","score":7,"rationale":"知识内容录制高度数字化"},{"id":467,"cat":"文学","name":"短视频创作者","score":7,"rationale":"短视频策划制作高度数字化"},{"id":468,"cat":"文学","name":"社交媒体营销专员","score":8,"rationale":"社媒营销工作完全数字化"},{"id":469,"cat":"文学","name":"社交媒体运营","score":8,"rationale":"社媒运营工作完全数字化"},{"id":470,"cat":"文学","name":"社群运营","score":7,"rationale":"社群运营管理高度数字化"},{"id":471,"cat":"文学","name":"笔译员","score":8,"rationale":"文字翻译AI已高度替代"},{"id":472,"cat":"文学","name":"编剧","score":7,"rationale":"剧本创作工作高度数字化"},{"id":473,"cat":"文学","name":"编导","score":6,"rationale":"编导需创意与现场结合"},{"id":474,"cat":"文学","name":"编辑","score":7,"rationale":"编辑工作高度数字化"},{"id":475,"cat":"文学","name":"网络编辑","score":7,"rationale":"网络内容编辑高度数字化"},{"id":476,"cat":"文学","name":"翻译","score":8,"rationale":"翻译工作AI已高度替代"},{"id":477,"cat":"文学","name":"自媒体运营","score":7,"rationale":"自媒体内容运营高度数字化"},{"id":478,"cat":"文学","name":"英语教师","score":7,"rationale":"英语教学内容AI已大量介入"},{"id":479,"cat":"文学","name":"行政秘书","score":7,"rationale":"行政文档与沟通高度数字化"},{"id":480,"cat":"文学","name":"西班牙语教师","score":6,"rationale":"外语教学需人际互动"},{"id":481,"cat":"文学","name":"记者","score":7,"rationale":"新闻写作可AI辅助，采集需现场"},{"id":482,"cat":"文学","name":"评论家","score":7,"rationale":"评论写作工作高度数字化"},{"id":483,"cat":"文学","name":"诗人","score":6,"rationale":"诗歌创作虽数字化但人文性强"},{"id":484,"cat":"文学","name":"语文教师","score":6,"rationale":"语文教学需人际，内容可AI辅助"},{"id":485,"cat":"文学","name":"跨境电商运营专员","score":7,"rationale":"跨境电商运营高度数字化"},{"id":486,"cat":"文学","name":"配音演员","score":7,"rationale":"配音工作AI已高度冲击"},{"id":487,"cat":"文学","name":"阿拉伯语教师","score":6,"rationale":"外语教学需人际互动"},{"id":488,"cat":"文学","name":"韩语教师","score":6,"rationale":"外语教学需人际互动"},{"id":489,"cat":"法学","name":"专利代理人","score":8,"rationale":"专利文件撰写与检索高度数字化"},{"id":490,"cat":"法学","name":"书记员","score":7,"rationale":"法庭记录工作高度数字化"},{"id":491,"cat":"法学","name":"仲裁员","score":6,"rationale":"仲裁需判断力，案卷可AI辅助"},{"id":492,"cat":"法学","name":"企业法务","score":7,"rationale":"合同审查与法务文件高度数字化"},{"id":493,"cat":"法学","name":"公司律师","score":7,"rationale":"公司法律文件与咨询高度数字化"},{"id":494,"cat":"法学","name":"公安干警","score":3,"rationale":"现场执法与侦查工作为主"},{"id":495,"cat":"法学","name":"公证员","score":6,"rationale":"公证文书起草可AI辅助"},{"id":496,"cat":"法学","name":"刑事律师","score":7,"rationale":"案件分析与文书撰写高度数字化"},{"id":497,"cat":"法学","name":"劳动法律师","score":7,"rationale":"劳动争议文书撰写高度数字化"},{"id":498,"cat":"法学","name":"司法警察","score":2,"rationale":"司法现场押解执行为主"},{"id":499,"cat":"法学","name":"司法鉴定人","score":5,"rationale":"鉴定需专业技术与现场"},{"id":500,"cat":"法学","name":"合规专员","score":7,"rationale":"合规文件审查高度数字化"},{"id":501,"cat":"法学","name":"商标代理人","score":7,"rationale":"商标申请文件撰写高度数字化"},{"id":502,"cat":"法学","name":"婚姻家庭律师","score":6,"rationale":"婚姻法律咨询需人际，文书可AI辅助"},{"id":503,"cat":"法学","name":"律师","score":7,"rationale":"法律文书撰写高度数字化"},{"id":504,"cat":"法学","name":"房地产律师","score":7,"rationale":"房产法律文件高度数字化"},{"id":505,"cat":"法学","name":"检察官","score":6,"rationale":"检察工作需判断，文书可AI辅助"},{"id":506,"cat":"法学","name":"检察官助理","score":7,"rationale":"案件文书整理高度数字化"},{"id":507,"cat":"法学","name":"民事律师","score":7,"rationale":"民事案件文书撰写高度数字化"},{"id":508,"cat":"法学","name":"法务专员","score":7,"rationale":"法务文件处理高度数字化"},{"id":509,"cat":"法学","name":"法务主管","score":7,"rationale":"法务管理工作高度数字化"},{"id":510,"cat":"法学","name":"法学教师","score":7,"rationale":"教学与研究工作高度数字化"},{"id":511,"cat":"法学","name":"法官","score":6,"rationale":"司法裁判需人工判断，文书可辅助"},{"id":512,"cat":"法学","name":"法官助理","score":7,"rationale":"法律文书整理与研究数字化"},{"id":513,"cat":"法学","name":"法律援助工作者","score":6,"rationale":"援助需人际沟通，文书可AI辅助"},{"id":514,"cat":"法学","name":"法律研究员","score":8,"rationale":"法律研究写作完全数字化"},{"id":515,"cat":"法学","name":"法律顾问","score":7,"rationale":"法律咨询与文书起草高度数字化"},{"id":516,"cat":"法学","name":"海关缉私警察","score":3,"rationale":"现场缉私执法工作为主"},{"id":517,"cat":"法学","name":"消防救援人员","score":2,"rationale":"消防救援以现场操作为核心"},{"id":518,"cat":"法学","name":"涉外律师","score":7,"rationale":"涉外法律文书与谈判高度数字化"},{"id":519,"cat":"法学","name":"版权代理人","score":7,"rationale":"版权文件处理与谈判数字化"},{"id":520,"cat":"法学","name":"狱警","score":2,"rationale":"监狱管理以现场监控为主"},{"id":521,"cat":"法学","name":"知识产权律师","score":8,"rationale":"知产文件撰写与检索高度数字化"},{"id":522,"cat":"法学","name":"社区矫正工作者","score":4,"rationale":"社区矫正需实地跟踪管理"},{"id":523,"cat":"法学","name":"纪检监察干部","score":5,"rationale":"纪检调查结合现场与文档"},{"id":524,"cat":"法学","name":"行政律师","score":7,"rationale":"行政法律文书撰写高度数字化"},{"id":525,"cat":"法学","name":"行政执法人员","score":3,"rationale":"现场行政执法为主"},{"id":526,"cat":"法学","name":"警察","score":3,"rationale":"现场执法与社区巡逻为主"},{"id":527,"cat":"法学","name":"诉讼律师","score":7,"rationale":"诉讼文书撰写与庭审准备数字化"},{"id":528,"cat":"法学","name":"边防警察","score":2,"rationale":"边境现场执勤为主"},{"id":529,"cat":"法学","name":"金融律师","score":8,"rationale":"金融法律文件撰写高度数字化"},{"id":530,"cat":"法学","name":"非诉讼律师","score":8,"rationale":"非诉讼法律文件起草高度数字化"},{"id":531,"cat":"理学","name":"专利审查员","score":7,"rationale":"专利审查与检索工作数字化"},{"id":532,"cat":"理学","name":"人力资源测评师","score":6,"rationale":"测评工具与分析高度数字化"},{"id":533,"cat":"理学","name":"光学工程师","score":5,"rationale":"光学系统设计与实验室测试结合"},{"id":534,"cat":"理学","name":"分子生物学家","score":6,"rationale":"分子生物实验与数据分析结合"},{"id":535,"cat":"理学","name":"分析化学工程师","score":5,"rationale":"化学分析与实验室操作结合"},{"id":536,"cat":"理学","name":"分析化学师","score":5,"rationale":"化学检测与分析结合"},{"id":537,"cat":"理学","name":"动物学家","score":5,"rationale":"野外观测与数据分析结合"},{"id":538,"cat":"理学","name":"化学实验室技术员","score":4,"rationale":"实验室操作以现场为主"},{"id":539,"cat":"理学","name":"化学教师","score":6,"rationale":"化学教学内容可AI辅助"},{"id":540,"cat":"理学","name":"化学研究员","score":6,"rationale":"化学研究实验与分析结合"},{"id":541,"cat":"理学","name":"地球化学家","score":6,"rationale":"数据分析与野外采样结合"},{"id":542,"cat":"理学","name":"地球物理学家","score":6,"rationale":"地球物理数据分析可AI辅助"},{"id":543,"cat":"理学","name":"地理信息工程师","score":7,"rationale":"GIS数据处理高度数字化"},{"id":544,"cat":"理学","name":"地理信息系统工程师","score":7,"rationale":"GIS系统开发高度数字化"},{"id":545,"cat":"理学","name":"地理教师","score":6,"rationale":"地理教学内容整理可AI辅助"},{"id":546,"cat":"理学","name":"地质学家","score":5,"rationale":"野外地质调查与室内分析结合"},{"id":547,"cat":"理学","name":"地质学研究员","score":6,"rationale":"地质数据分析与写作高度数字化"},{"id":548,"cat":"理学","name":"声学工程师","score":5,"rationale":"声学测量与设计结合"},{"id":549,"cat":"理学","name":"天文台技术员","score":4,"rationale":"望远镜操作维护需现场"},{"id":550,"cat":"理学","name":"天文学家","score":7,"rationale":"天文数据分析与研究高度数字化"},{"id":551,"cat":"理学","name":"天文研究员","score":7,"rationale":"天文数据处理与写作高度数字化"},{"id":552,"cat":"理学","name":"天文观测员","score":4,"rationale":"天文观测需现场操作"},{"id":553,"cat":"理学","name":"实验室技术员","score":4,"rationale":"实验室操作以现场为主"},{"id":554,"cat":"理学","name":"微生物学家","score":5,"rationale":"实验室培养与分析结合"},{"id":555,"cat":"理学","name":"心理咨询师","score":5,"rationale":"心理咨询需面对面，评估可辅助"},{"id":556,"cat":"理学","name":"心理学教师","score":6,"rationale":"心理教学与研究高度数字化"},{"id":557,"cat":"理学","name":"心理治疗师","score":5,"rationale":"心理治疗高度依赖人际互动"},{"id":558,"cat":"理学","name":"数学教师","score":6,"rationale":"数学教学内容可AI大量辅助"},{"id":559,"cat":"理学","name":"数学研究员","score":7,"rationale":"数学研究证明与写作高度数字化"},{"id":560,"cat":"理学","name":"数据科学家","score":9,"rationale":"数据科学工作完全在电脑上完成"},{"id":561,"cat":"理学","name":"无机化学工程师","score":5,"rationale":"无机化学研发与实验室结合"},{"id":562,"cat":"理学","name":"无机化学师","score":5,"rationale":"无机化学检测与分析结合"},{"id":563,"cat":"理学","name":"有机化学工程师","score":5,"rationale":"有机化学研发与实验室结合"},{"id":564,"cat":"理学","name":"有机化学师","score":5,"rationale":"有机化学检测与合成结合"},{"id":565,"cat":"理学","name":"材料物理工程师","score":5,"rationale":"材料物理测试与分析结合"},{"id":566,"cat":"理学","name":"核物理工程师","score":5,"rationale":"核物理研究与实验结合"},{"id":567,"cat":"理学","name":"植物学家","score":5,"rationale":"野外调查与实验室分析结合"},{"id":568,"cat":"理学","name":"气候分析师","score":7,"rationale":"气候数据分析工作高度数字化"},{"id":569,"cat":"理学","name":"气象学家","score":6,"rationale":"气象数据分析与模型建立为主"},{"id":570,"cat":"理学","name":"气象工程师","score":6,"rationale":"气象数据处理与系统开发结合"},{"id":571,"cat":"理学","name":"海洋学家","score":5,"rationale":"海洋调查与数据分析结合"},{"id":572,"cat":"理学","name":"海洋生物学家","score":5,"rationale":"野外调查与实验室分析结合"},{"id":573,"cat":"理学","name":"海洋科学研究员","score":6,"rationale":"海洋数据分析与写作为主"},{"id":574,"cat":"理学","name":"物理化学工程师","score":5,"rationale":"物理化学研发与实验室结合"},{"id":575,"cat":"理学","name":"物理学研究员","score":7,"rationale":"理论研究与数值模拟高度数字化"},{"id":576,"cat":"理学","name":"物理教师","score":6,"rationale":"物理教学内容整理可AI辅助"},{"id":577,"cat":"理学","name":"物理研究员","score":7,"rationale":"物理数据分析与写作高度数字化"},{"id":578,"cat":"理学","name":"环境科学家","score":6,"rationale":"环境监测与数据分析结合"},{"id":579,"cat":"理学","name":"环境科学研究员","score":6,"rationale":"环境数据分析与写作高度数字化"},{"id":580,"cat":"理学","name":"生态学家","score":5,"rationale":"野外调查与数据分析结合"},{"id":581,"cat":"理学","name":"生物化学师","score":5,"rationale":"生化实验与分析结合"},{"id":582,"cat":"理学","name":"生物学家","score":5,"rationale":"野外调查与实验室工作结合"},{"id":583,"cat":"理学","name":"生物学研究员","score":6,"rationale":"生物数据分析与写作高度数字化"},{"id":584,"cat":"理学","name":"生物实验室技术员","score":4,"rationale":"实验室操作以现场为主"},{"id":585,"cat":"理学","name":"生物教师","score":6,"rationale":"生物教学内容整理可AI辅助"},{"id":586,"cat":"理学","name":"生物研究员","score":6,"rationale":"生物研究数据分析高度数字化"},{"id":587,"cat":"理学","name":"用户研究员","score":7,"rationale":"用户研究报告撰写高度数字化"},{"id":588,"cat":"理学","name":"科学普及工作者","score":6,"rationale":"科普内容创作可AI大量辅助"},{"id":589,"cat":"理学","name":"科技编辑","score":7,"rationale":"科技内容编辑高度数字化"},{"id":590,"cat":"理学","name":"精算师","score":8,"rationale":"精算建模与分析完全数字化"},{"id":591,"cat":"理学","name":"细胞生物学家","score":6,"rationale":"实验室研究与数据分析结合"},{"id":592,"cat":"理学","name":"统计分析师","score":8,"rationale":"统计分析工作完全数字化"},{"id":593,"cat":"理学","name":"统计学研究员","score":7,"rationale":"统计研究与写作高度数字化"},{"id":594,"cat":"理学","name":"统计师","score":7,"rationale":"统计数据处理高度数字化"},{"id":595,"cat":"理学","name":"计算机科学研究员","score":8,"rationale":"计算机研究工作完全数字化"},{"id":596,"cat":"理学","name":"计量测试工程师","score":5,"rationale":"计量测试需现场操作"},{"id":597,"cat":"理学","name":"质检技术员","score":4,"rationale":"质检操作以现场为主"},{"id":598,"cat":"理学","name":"运筹分析师","score":8,"rationale":"运筹优化分析完全数字化"},{"id":599,"cat":"理学","name":"遗传学家","score":7,"rationale":"遗传数据分析高度数字化"},{"id":600,"cat":"理学","name":"遥感工程师","score":7,"rationale":"遥感数据处理高度数字化"},{"id":601,"cat":"理学","name":"遥感技术专家","score":7,"rationale":"遥感数据分析高度数字化"},{"id":602,"cat":"理学","name":"高分子化学师","score":5,"rationale":"高分子材料研发与实验室结合"},{"id":603,"cat":"管理学","name":"IaaS产品经理","score":8,"rationale":"云产品规划与文档完全数字化"},{"id":604,"cat":"管理学","name":"PaaS产品经理","score":8,"rationale":"平台产品规划完全数字化"},{"id":605,"cat":"管理学","name":"SaaS产品经理","score":8,"rationale":"SaaS产品设计完全数字化"},{"id":606,"cat":"管理学","name":"云计算产品经理","score":8,"rationale":"云产品规划工作完全数字化"},{"id":607,"cat":"管理学","name":"人力资源经理","score":6,"rationale":"HR管理兼人际与数字化工作"},{"id":608,"cat":"管理学","name":"人工智能产品经理","score":8,"rationale":"AI产品规划完全数字化"},{"id":609,"cat":"管理学","name":"人工智能解决方案架构师","score":8,"rationale":"AI解决方案设计完全数字化"},{"id":610,"cat":"管理学","name":"仓储经理","score":5,"rationale":"仓储管理结合现场与数字"},{"id":611,"cat":"管理学","name":"企业战略总监","score":7,"rationale":"战略分析与报告高度数字化"},{"id":612,"cat":"管理学","name":"企业服务产品经理","score":8,"rationale":"企服产品规划完全数字化"},{"id":613,"cat":"管理学","name":"会计主管","score":7,"rationale":"会计主管工作高度数字化"},{"id":614,"cat":"管理学","name":"供应链经理","score":6,"rationale":"供应链管理结合数字与现场"},{"id":615,"cat":"管理学","name":"保险科技产品经理","score":8,"rationale":"保险科技产品规划数字化"},{"id":616,"cat":"管理学","name":"健康科技产品经理","score":7,"rationale":"健康科技产品规划高度数字化"},{"id":617,"cat":"管理学","name":"内容营销经理","score":7,"rationale":"内容营销策略与执行数字化"},{"id":618,"cat":"管理学","name":"区块链产品经理","score":8,"rationale":"区块链产品规划完全数字化"},{"id":619,"cat":"管理学","name":"医疗科技产品经理","score":7,"rationale":"医疗科技产品规划高度数字化"},{"id":620,"cat":"管理学","name":"员工关系专员","score":5,"rationale":"员工关系需人际，文档可AI辅助"},{"id":621,"cat":"管理学","name":"品牌经理","score":7,"rationale":"品牌策略与传播工作高度数字化"},{"id":622,"cat":"管理学","name":"基金管理师","score":8,"rationale":"基金管理分析完全数字化"},{"id":623,"cat":"管理学","name":"大数据产品经理","score":8,"rationale":"大数据产品规划完全数字化"},{"id":624,"cat":"管理学","name":"安全管理经理","score":6,"rationale":"安全管理兼现场与文档"},{"id":625,"cat":"管理学","name":"审计师","score":7,"rationale":"审计工作高度数字化"},{"id":626,"cat":"管理学","name":"市场策划师","score":7,"rationale":"市场策划工作高度数字化"},{"id":627,"cat":"管理学","name":"市场营销经理","score":7,"rationale":"营销管理工作高度数字化"},{"id":628,"cat":"管理学","name":"广告策划师","score":7,"rationale":"广告策划创意高度数字化"},{"id":629,"cat":"管理学","name":"成本会计师","score":7,"rationale":"成本核算工作高度数字化"},{"id":630,"cat":"管理学","name":"战略规划师","score":7,"rationale":"战略分析与规划高度数字化"},{"id":631,"cat":"管理学","name":"投资经理","score":7,"rationale":"投资分析与决策高度数字化"},{"id":632,"cat":"管理学","name":"搜索引擎优化专家","score":8,"rationale":"SEO工作完全在计算机上"},{"id":633,"cat":"管理学","name":"搜索引擎营销专家","score":8,"rationale":"SEM工作完全在计算机上"},{"id":634,"cat":"管理学","name":"教育科技产品经理","score":8,"rationale":"教育科技产品规划数字化"},{"id":635,"cat":"管理学","name":"数字营销经理","score":8,"rationale":"数字营销管理完全数字化"},{"id":636,"cat":"管理学","name":"数字金融产品经理","score":8,"rationale":"金融产品规划完全数字化"},{"id":637,"cat":"管理学","name":"数据产品经理","score":8,"rationale":"数据产品规划完全数字化"},{"id":638,"cat":"管理学","name":"智能投顾产品经理","score":8,"rationale":"智能投顾产品规划数字化"},{"id":639,"cat":"管理学","name":"物流经理","score":6,"rationale":"物流管理结合数字与现场"},{"id":640,"cat":"管理学","name":"物联网产品经理","score":7,"rationale":"IoT产品规划高度数字化"},{"id":641,"cat":"管理学","name":"生产经理","score":5,"rationale":"生产管理需驻场现场"},{"id":642,"cat":"管理学","name":"电子商务运营经理","score":8,"rationale":"电商运营工作完全数字化"},{"id":643,"cat":"管理学","name":"直播电商运营经理","score":7,"rationale":"直播运营结合线上与策划"},{"id":644,"cat":"管理学","name":"短视频电商运营经理","score":7,"rationale":"短视频电商运营高度数字化"},{"id":645,"cat":"管理学","name":"社交媒体营销经理","score":8,"rationale":"社媒营销管理完全数字化"},{"id":646,"cat":"管理学","name":"社交电商运营经理","score":7,"rationale":"社交电商运营高度数字化"},{"id":647,"cat":"管理学","name":"移动商务经理","score":7,"rationale":"移动电商管理高度数字化"},{"id":648,"cat":"管理学","name":"管理咨询师","score":7,"rationale":"管理咨询报告撰写高度数字化"},{"id":649,"cat":"管理学","name":"绩效管理专员","score":6,"rationale":"绩效考核系统可AI辅助"},{"id":650,"cat":"管理学","name":"行政经理","score":6,"rationale":"行政管理工作可AI辅助"},{"id":651,"cat":"管理学","name":"设备经理","score":5,"rationale":"设备管理需现场与文档"},{"id":652,"cat":"管理学","name":"财务分析师","score":8,"rationale":"财务分析工作完全数字化"},{"id":653,"cat":"管理学","name":"质量经理","score":5,"rationale":"质量管理结合现场与数字"},{"id":654,"cat":"管理学","name":"资产管理师","score":7,"rationale":"资产管理与分析高度数字化"},{"id":655,"cat":"管理学","name":"跨境电商运营经理","score":7,"rationale":"跨境电商运营高度数字化"},{"id":656,"cat":"管理学","name":"运营经理","score":7,"rationale":"运营管理分析高度数字化"},{"id":657,"cat":"管理学","name":"采购经理","score":6,"rationale":"采购管理结合谈判与数字"},{"id":658,"cat":"管理学","name":"金融科技产品经理","score":8,"rationale":"金融科技产品规划数字化"},{"id":659,"cat":"管理学","name":"首席信息官","score":7,"rationale":"CIO战略决策高度数字化"},{"id":660,"cat":"管理学","name":"首席技术官","score":7,"rationale":"CTO技术战略工作高度数字化"},{"id":661,"cat":"管理学","name":"首席财务官","score":7,"rationale":"CFO财务决策与分析数字化"},{"id":662,"cat":"管理学","name":"首席运营官","score":7,"rationale":"COO运营管理高度数字化"},{"id":663,"cat":"管理学-其他","name":"前厅经理","score":4,"rationale":"前台管理需现场服务客人"},{"id":664,"cat":"管理学-其他","name":"区域经理","score":5,"rationale":"区域管理需实地走访"},{"id":665,"cat":"管理学-其他","name":"单证员","score":8,"rationale":"贸易单证处理高度数字化"},{"id":666,"cat":"管理学-其他","name":"商务专员","score":6,"rationale":"商务对接兼线上与面谈"},{"id":667,"cat":"管理学-其他","name":"商务经理","score":6,"rationale":"商务谈判与文档管理结合"},{"id":668,"cat":"管理学-其他","name":"外贸业务员","score":6,"rationale":"外贸业务以通讯和文档为主"},{"id":669,"cat":"管理学-其他","name":"外贸跟单员","score":6,"rationale":"跟单管理工作高度数字化"},{"id":670,"cat":"管理学-其他","name":"大客户经理","score":5,"rationale":"大客户关系需人际维护"},{"id":671,"cat":"管理学-其他","name":"客户经理","score":5,"rationale":"客户关系维护需人际互动"},{"id":672,"cat":"管理学-其他","name":"客房经理","score":3,"rationale":"客房管理需现场服务"},{"id":673,"cat":"管理学-其他","name":"报关员","score":7,"rationale":"报关申报工作高度数字化"},{"id":674,"cat":"管理学-其他","name":"报检员","score":6,"rationale":"报检工作兼现场与数字"},{"id":675,"cat":"管理学-其他","name":"渠道经理","score":6,"rationale":"渠道管理结合人际与数字"},{"id":676,"cat":"管理学-其他","name":"酒店管理师","score":5,"rationale":"酒店管理结合现场与行政"},{"id":677,"cat":"管理学-其他","name":"酒店经理","score":4,"rationale":"酒店运营需现场管理"},{"id":678,"cat":"管理学-其他","name":"销售代表","score":5,"rationale":"销售需人际互动，工具可AI辅助"},{"id":679,"cat":"管理学-其他","name":"销售经理","score":6,"rationale":"销售管理与分析高度数字化"},{"id":680,"cat":"管理学-其他","name":"项目助理","score":6,"rationale":"项目文档与协调工作数字化"},{"id":681,"cat":"管理学-其他","name":"餐饮经理","score":4,"rationale":"餐饮管理需现场运营"},{"id":682,"cat":"管理学-工商管理","name":"产品运营专员","score":7,"rationale":"产品运营分析工作高度数字化"},{"id":683,"cat":"管理学-工商管理","name":"人力资源专员","score":6,"rationale":"HR专员工作高度数字化"},{"id":684,"cat":"管理学-工商管理","name":"人力资源主管","score":6,"rationale":"HR主管管理工作数字化"},{"id":685,"cat":"管理学-工商管理","name":"仓储专员","score":4,"rationale":"仓储操作需现场"},{"id":686,"cat":"管理学-工商管理","name":"仓储主管","score":5,"rationale":"仓储管理结合现场与数字"},{"id":687,"cat":"管理学-工商管理","name":"供应商管理专员","score":6,"rationale":"供应商管理工作高度数字化"},{"id":688,"cat":"管理学-工商管理","name":"供应链专员","score":6,"rationale":"供应链数据管理高度数字化"},{"id":689,"cat":"管理学-工商管理","name":"内容运营专员","score":7,"rationale":"内容运营工作高度数字化"},{"id":690,"cat":"管理学-工商管理","name":"前台接待","score":4,"rationale":"前台服务需现场人际互动"},{"id":691,"cat":"管理学-工商管理","name":"办公室主任","score":6,"rationale":"行政管理工作可AI辅助"},{"id":692,"cat":"管理学-工商管理","name":"后勤专员","score":4,"rationale":"后勤保障需现场操作"},{"id":693,"cat":"管理学-工商管理","name":"品牌专员","score":7,"rationale":"品牌内容创作高度数字化"},{"id":694,"cat":"管理学-工商管理","name":"品牌主管","score":7,"rationale":"品牌管理工作高度数字化"},{"id":695,"cat":"管理学-工商管理","name":"培训专员","score":6,"rationale":"培训内容开发可AI辅助"},{"id":696,"cat":"管理学-工商管理","name":"市场专员","score":7,"rationale":"市场执行工作高度数字化"},{"id":697,"cat":"管理学-工商管理","name":"市场主管","score":7,"rationale":"市场管理分析高度数字化"},{"id":698,"cat":"管理学-工商管理","name":"市场调研专员","score":7,"rationale":"市场调研报告撰写数字化"},{"id":699,"cat":"管理学-工商管理","name":"总经理助理","score":6,"rationale":"行政支持与文档高度数字化"},{"id":700,"cat":"管理学-工商管理","name":"招聘专员","score":6,"rationale":"招聘工作兼数字平台与人际"},{"id":701,"cat":"管理学-工商管理","name":"新媒体运营专员","score":8,"rationale":"新媒体运营工作完全数字化"},{"id":702,"cat":"管理学-工商管理","name":"档案管理员","score":7,"rationale":"档案数字化管理高度数字化"},{"id":703,"cat":"管理学-工商管理","name":"活动策划专员","score":6,"rationale":"活动策划文档可AI辅助"},{"id":704,"cat":"管理学-工商管理","name":"活动运营专员","score":6,"rationale":"活动运营兼线上策划与现场"},{"id":705,"cat":"管理学-工商管理","name":"物流专员","score":5,"rationale":"物流专员兼系统与现场"},{"id":706,"cat":"管理学-工商管理","name":"物流主管","score":5,"rationale":"物流管理结合现场与数字"},{"id":707,"cat":"管理学-工商管理","name":"用户运营专员","score":7,"rationale":"用户运营分析高度数字化"},{"id":708,"cat":"管理学-工商管理","name":"电商运营专员","score":8,"rationale":"电商运营工作完全数字化"},{"id":709,"cat":"管理学-工商管理","name":"秘书","score":7,"rationale":"行政秘书工作高度数字化"},{"id":710,"cat":"管理学-工商管理","name":"策划专员","score":7,"rationale":"策划方案撰写高度数字化"},{"id":711,"cat":"管理学-工商管理","name":"绩效考核专员","score":7,"rationale":"绩效考核系统操作数字化"},{"id":712,"cat":"管理学-工商管理","name":"董事长助理","score":6,"rationale":"行政支持与信息整理数字化"},{"id":713,"cat":"管理学-工商管理","name":"薪酬福利专员","score":7,"rationale":"薪酬核算工作高度数字化"},{"id":714,"cat":"管理学-工商管理","name":"行政专员","score":6,"rationale":"行政专员工作高度数字化"},{"id":715,"cat":"管理学-工商管理","name":"行政主管","score":6,"rationale":"行政管理文档工作数字化"},{"id":716,"cat":"管理学-工商管理","name":"运营专员","score":7,"rationale":"运营工作高度数字化"},{"id":717,"cat":"管理学-工商管理","name":"运营主管","score":7,"rationale":"运营管理分析高度数字化"},{"id":718,"cat":"管理学-工商管理","name":"配送专员","score":3,"rationale":"配送工作以现场体力劳动为主"},{"id":719,"cat":"管理学-工商管理","name":"采购专员","score":6,"rationale":"采购询价与管理高度数字化"},{"id":720,"cat":"管理学-工商管理","name":"采购主管","score":6,"rationale":"采购管理工作数字化"},{"id":721,"cat":"管理学-工商管理","name":"采购员","score":6,"rationale":"采购工作高度数字化"},{"id":722,"cat":"管理学-财务与会计","name":"会计","score":8,"rationale":"会计核算工作高度数字化"},{"id":723,"cat":"管理学-财务与会计","name":"内部审计师","score":7,"rationale":"内审报告撰写高度数字化"},{"id":724,"cat":"管理学-财务与会计","name":"出纳","score":7,"rationale":"出纳资金管理工作数字化"},{"id":725,"cat":"管理学-财务与会计","name":"基金经理","score":7,"rationale":"基金管理分析高度数字化"},{"id":726,"cat":"管理学-财务与会计","name":"外部审计师","score":7,"rationale":"外审工作高度数字化"},{"id":727,"cat":"管理学-财务与会计","name":"审计专员","score":7,"rationale":"审计文档工作高度数字化"},{"id":728,"cat":"管理学-财务与会计","name":"总账会计","score":8,"rationale":"总账核算工作完全数字化"},{"id":729,"cat":"管理学-财务与会计","name":"成本会计","score":8,"rationale":"成本核算工作完全数字化"},{"id":730,"cat":"管理学-财务与会计","name":"投资分析师","score":8,"rationale":"投资研究报告撰写完全数字化"},{"id":731,"cat":"管理学-财务与会计","name":"注册会计师","score":7,"rationale":"注会审计与报告高度数字化"},{"id":732,"cat":"管理学-财务与会计","name":"理财规划师","score":7,"rationale":"理财方案制定与分析高度数字化"},{"id":733,"cat":"管理学-财务与会计","name":"税务会计","score":8,"rationale":"税务申报核算完全数字化"},{"id":734,"cat":"管理学-财务与会计","name":"税务师","score":7,"rationale":"税务规划与申报高度数字化"},{"id":735,"cat":"管理学-财务与会计","name":"管理会计","score":7,"rationale":"管理报告分析高度数字化"},{"id":736,"cat":"管理学-财务与会计","name":"证券分析师","score":8,"rationale":"证券研究报告完全数字化"},{"id":737,"cat":"管理学-财务与会计","name":"财务主管","score":7,"rationale":"财务管理工作高度数字化"},{"id":738,"cat":"管理学-财务与会计","name":"财务会计","score":8,"rationale":"财务核算工作完全数字化"},{"id":739,"cat":"管理学-财务与会计","name":"财务总监","score":7,"rationale":"CFO工作高度数字化"},{"id":740,"cat":"管理学-财务与会计","name":"财务经理","score":7,"rationale":"财务管理工作高度数字化"},{"id":741,"cat":"管理学-财务与会计","name":"资产评估师","score":7,"rationale":"资产评估报告撰写高度数字化"},{"id":742,"cat":"经济学","name":"产业研究员","score":7,"rationale":"产业研究报告撰写高度数字化"},{"id":743,"cat":"经济学","name":"价格分析师","score":8,"rationale":"价格数据分析完全数字化"},{"id":744,"cat":"经济学","name":"保险代理人","score":5,"rationale":"保险销售需人际，文档可AI辅助"},{"id":745,"cat":"经济学","name":"保险核保员","score":7,"rationale":"核保决策与文档高度数字化"},{"id":746,"cat":"经济学","name":"保险理赔员","score":7,"rationale":"理赔核定工作高度数字化"},{"id":747,"cat":"经济学","name":"保险经纪人","score":6,"rationale":"经纪业务需人际，分析可AI辅助"},{"id":748,"cat":"经济学","name":"信用分析师","score":8,"rationale":"信用评估模型分析完全数字化"},{"id":749,"cat":"经济学","name":"信用评级师","score":7,"rationale":"信用评级报告高度数字化"},{"id":750,"cat":"经济学","name":"信贷专员","score":7,"rationale":"信贷审批与文档高度数字化"},{"id":751,"cat":"经济学","name":"债券交易员","score":7,"rationale":"债券交易分析高度数字化"},{"id":752,"cat":"经济学","name":"发展经济学家","score":7,"rationale":"经济研究与写作高度数字化"},{"id":753,"cat":"经济学","name":"国际商务师","score":6,"rationale":"国际商务兼谈判与文档"},{"id":754,"cat":"经济学","name":"国际经济学家","score":7,"rationale":"经济数据分析与写作高度数字化"},{"id":755,"cat":"经济学","name":"国际贸易专员","score":6,"rationale":"贸易业务兼文档与人际"},{"id":756,"cat":"经济学","name":"基金销售","score":6,"rationale":"基金销售需人际，资料可AI辅助"},{"id":757,"cat":"经济学","name":"外汇交易员","score":7,"rationale":"外汇交易分析高度数字化"},{"id":758,"cat":"经济学","name":"大宗商品分析师","score":7,"rationale":"大宗商品研究报告高度数字化"},{"id":759,"cat":"经济学","name":"宏观分析师","score":8,"rationale":"宏观经济分析完全数字化"},{"id":760,"cat":"经济学","name":"宏观经济分析师","score":8,"rationale":"宏观经济研究完全数字化"},{"id":761,"cat":"经济学","name":"市场分析师","score":8,"rationale":"市场数据分析完全数字化"},{"id":762,"cat":"经济学","name":"市场研究员","score":7,"rationale":"市场研究报告高度数字化"},{"id":763,"cat":"经济学","name":"微观分析师","score":8,"rationale":"微观经济分析完全数字化"},{"id":764,"cat":"经济学","name":"投资银行家","score":7,"rationale":"投行工作高度数字化"},{"id":765,"cat":"经济学","name":"政策研究员","score":7,"rationale":"政策研究写作高度数字化"},{"id":766,"cat":"经济学","name":"期货交易员","score":7,"rationale":"期货交易分析高度数字化"},{"id":767,"cat":"经济学","name":"期货分析师","score":7,"rationale":"期货研究报告高度数字化"},{"id":768,"cat":"经济学","name":"海关关员","score":5,"rationale":"海关查验需现场，报关文档数字化"},{"id":769,"cat":"经济学","name":"消费分析师","score":8,"rationale":"消费数据分析完全数字化"},{"id":770,"cat":"经济学","name":"理财经理","score":6,"rationale":"理财销售需人际，分析可AI辅助"},{"id":771,"cat":"经济学","name":"私募股权分析师","score":8,"rationale":"PE投资分析完全数字化"},{"id":772,"cat":"经济学","name":"税务专员","score":7,"rationale":"税务申报工作高度数字化"},{"id":773,"cat":"经济学","name":"经济分析师","score":8,"rationale":"经济数据分析完全数字化"},{"id":774,"cat":"经济学","name":"经济学家","score":7,"rationale":"经济研究与写作高度数字化"},{"id":775,"cat":"经济学","name":"经济政策研究员","score":7,"rationale":"政策研究写作高度数字化"},{"id":776,"cat":"经济学","name":"统计专员","score":7,"rationale":"统计数据处理高度数字化"},{"id":777,"cat":"经济学","name":"股票交易员","score":7,"rationale":"股票交易分析高度数字化"},{"id":778,"cat":"经济学","name":"行业分析师","score":8,"rationale":"行业研究报告完全数字化"},{"id":779,"cat":"经济学","name":"行业研究员","score":8,"rationale":"行业研究报告完全数字化"},{"id":780,"cat":"经济学","name":"计量经济学家","score":8,"rationale":"计量建模分析完全数字化"},{"id":781,"cat":"经济学","name":"证券经纪人","score":7,"rationale":"证券业务高度数字化"},{"id":782,"cat":"经济学","name":"财政专员","score":7,"rationale":"财政数据处理高度数字化"},{"id":783,"cat":"经济学","name":"财政经济学家","score":7,"rationale":"财政研究写作高度数字化"},{"id":784,"cat":"经济学","name":"货币经济学家","score":7,"rationale":"货币政策研究高度数字化"},{"id":785,"cat":"经济学","name":"金融分析师","score":8,"rationale":"金融分析报告完全数字化"},{"id":786,"cat":"经济学","name":"金融工程师","score":8,"rationale":"金融模型开发完全数字化"},{"id":787,"cat":"经济学","name":"金融科技工程师","score":8,"rationale":"金融科技开发完全数字化"},{"id":788,"cat":"经济学","name":"银行客户经理","score":6,"rationale":"银行客户管理需人际互动"},{"id":789,"cat":"经济学","name":"银行柜员","score":8,"rationale":"银行柜台业务高度数字化"},{"id":790,"cat":"经济学","name":"风险投资分析师","score":8,"rationale":"VC投资分析完全数字化"},{"id":791,"cat":"经济学","name":"风险控制专员","score":7,"rationale":"风控模型与文档高度数字化"},{"id":792,"cat":"经济学","name":"风险管理师","score":7,"rationale":"风险评估与报告高度数字化"},{"id":793,"cat":"经济学","name":"黄金交易员","score":7,"rationale":"黄金交易分析高度数字化"},{"id":794,"cat":"艺术学","name":"UI设计师","score":8,"rationale":"界面设计工作完全在计算机上"},{"id":795,"cat":"艺术学","name":"书法家","score":3,"rationale":"书法创作完全依赖手工"},{"id":796,"cat":"艺术学","name":"作曲家","score":6,"rationale":"音乐创作可AI辅助，创意需人工"},{"id":797,"cat":"艺术学","name":"动画师","score":8,"rationale":"动画制作工作完全数字化"},{"id":798,"cat":"艺术学","name":"动画设计师","score":8,"rationale":"动画设计工作完全数字化"},{"id":799,"cat":"艺术学","name":"室内设计师","score":7,"rationale":"室内设计方案高度数字化"},{"id":800,"cat":"艺术学","name":"工业设计师","score":7,"rationale":"工业设计工作高度数字化"},{"id":801,"cat":"艺术学","name":"平面设计师","score":8,"rationale":"平面设计工作完全数字化"},{"id":802,"cat":"艺术学","name":"广告设计师","score":8,"rationale":"广告设计工作完全数字化"},{"id":803,"cat":"艺术学","name":"影视导演","score":6,"rationale":"导演需现场把控，创意可AI辅助"},{"id":804,"cat":"艺术学","name":"戏剧导演","score":4,"rationale":"戏剧导演以现场排练指导为主"},{"id":805,"cat":"艺术学","name":"插画师","score":8,"rationale":"插画创作工作完全数字化"},{"id":806,"cat":"艺术学","name":"摄像师","score":4,"rationale":"摄像需现场操作"},{"id":807,"cat":"艺术学","name":"摄影师","score":5,"rationale":"拍摄需现场，后期可AI辅助"},{"id":808,"cat":"艺术学","name":"服装设计师","score":6,"rationale":"服装设计工作高度数字化"},{"id":809,"cat":"艺术学","name":"歌手","score":3,"rationale":"演唱表演高度依赖人工"},{"id":810,"cat":"艺术学","name":"游戏设计师","score":8,"rationale":"游戏设计工作完全数字化"},{"id":811,"cat":"艺术学","name":"演奏家","score":2,"rationale":"乐器演奏完全依赖人工"},{"id":812,"cat":"艺术学","name":"灯光设计师","score":5,"rationale":"灯光方案设计与现场调试结合"},{"id":813,"cat":"艺术学","name":"珠宝设计师","score":6,"rationale":"珠宝设计可AI辅助，工艺需人工"},{"id":814,"cat":"艺术学","name":"画家","score":4,"rationale":"绘画创作高度依赖人工"},{"id":815,"cat":"艺术学","name":"舞台设计师","score":6,"rationale":"舞台设计方案高度数字化"},{"id":816,"cat":"艺术学","name":"舞蹈编导","score":4,"rationale":"舞蹈编创需现场示范"},{"id":817,"cat":"艺术学","name":"设计师","score":7,"rationale":"设计工作高度数字化"},{"id":818,"cat":"艺术学","name":"雕塑家","score":2,"rationale":"雕塑创作完全依赖手工"},{"id":819,"cat":"艺术学","name":"音乐制作人","score":7,"rationale":"音乐制作工作高度数字化"},{"id":820,"cat":"艺术学","name":"音响设计师","score":5,"rationale":"音响设计与现场调试结合"},{"id":821,"cat":"材料科学与工程学","name":"生产制造 / 工艺技术岗","score":4,"rationale":"生产工艺以现场操作为主"}];
+
+// ===== CATEGORY COLORS =====
+const CCOLORS={
+  "军事学":"#6366f1","农学":"#22c55e","医学":"#f43f5e",
+  "历史学":"#a78bfa","哲学":"#c084fc","工学":"#3b82f6",
+  "工学-土木建筑与环境":"#60a5fa","工学-机械与自动化":"#38bdf8",
+  "工学-材料与能源":"#34d399","工学-计算机与电子信息":"#818cf8",
+  "教育学":"#fb923c","文学":"#fbbf24","法学":"#f87171",
+  "理学":"#2dd4bf","管理学":"#a3e635","管理学-其他":"#84cc16",
+  "管理学-工商管理":"#bef264","管理学-财务与会计":"#fde68a",
+  "经济学":"#fcd34d","艺术学":"#f9a8d4","材料科学与工程学":"#94a3b8"
+};
+
+// ===== RISK LEVELS =====
+const RLEVELS=[
+  {max:1,label:"极低风险",color:"#22c55e",bg:"rgba(34,197,94,.12)"},
+  {max:3,label:"低风险",color:"#86efac",bg:"rgba(134,239,172,.1)"},
+  {max:5,label:"中等风险",color:"#fbbf24",bg:"rgba(251,191,36,.12)"},
+  {max:7,label:"高风险",color:"#f97316",bg:"rgba(249,115,22,.12)"},
+  {max:9,label:"极高风险",color:"#ef4444",bg:"rgba(239,68,68,.12)"},
+  {max:10,label:"最高风险",color:"#dc2626",bg:"rgba(220,38,38,.15)"}
+];
+
+function getRisk(s){return RLEVELS.find(r=>s<=r.max)||RLEVELS[RLEVELS.length-1];}
+
+function scoreColor(s){
+  if(s===null)return"#1e2d40";
+  const t=s/10;
+  if(t<=.5){
+    const t2=t*2;
+    return`rgb(${Math.round(34+200*t2)},${Math.round(197-18*t2)},${Math.round(94-86*t2)})`;
+  }else{
+    const t2=(t-.5)*2;
+    return`rgb(${Math.round(234+5*t2)},${Math.round(179-111*t2)},${Math.round(8+60*t2)})`;
+  }
+}
+
+// ===== STATE =====
+let occ=DATA.map(d=>({...d}));// mutable copy
+let selCat=null,query="",sortMode="default",curView="treemap",curDetail=null;
+
+function getDisplay(){
+  return occ.filter(o=>{
+    if(selCat&&o.cat!==selCat)return false;
+    if(query&&!o.name.includes(query)&&!o.cat.includes(query))return false;
+    return true;
+  });
+}
+
+function getSorted(arr){
+  let a=[...arr];
+  if(sortMode==="desc")a.sort((x,y)=>y.score-x.score);
+  else if(sortMode==="asc")a.sort((x,y)=>x.score-y.score);
+  else if(sortMode==="name")a.sort((x,y)=>x.name.localeCompare(y.name));
+  else a.sort((x,y)=>x.cat.localeCompare(y.cat));
+  return a;
+}
+
+// ===== COLOR FUNS =====
+function doSearch(v){query=v.trim();render();updateStatus();}
+function doSort(v){sortMode=v;document.getElementById("sort-sel").value=v;render();}
+
+function switchView(v){
+  curView=v;
+  document.getElementById("btn-tm").classList.toggle("act",v==="treemap");
+  document.getElementById("btn-tb").classList.toggle("act",v==="table");
+  document.getElementById("tm-wrap").style.display=v==="treemap"?"block":"none";
+  document.getElementById("tbl-wrap").style.display=v==="table"?"block":"none";
+  render();
+}
+
+function updateStatus(){
+  const d=getDisplay();
+  document.getElementById("tb-status").textContent=`显示 ${d.length} 个职业`;
+}
+
+// ===== TREEMAP =====
+function renderTreemap(){
+  const C=document.getElementById("tm-wrap");
+  const W=C.clientWidth,H=C.clientHeight;
+  if(!W||!H)return;
+  const disp=getSorted(getDisplay());
+  const groups={};
+  disp.forEach(o=>{if(!groups[o.cat])groups[o.cat]=[];groups[o.cat].push(o);});
+
+  const hdata={name:"root",children:Object.entries(groups).map(([cat,items])=>({
+    name:cat,children:items.map(o=>({name:o.name,value:1,data:o}))
+  }))};
+
+  const root=d3.hierarchy(hdata).sum(d=>d.value||0);
+  d3.treemap().size([W,H]).paddingOuter(2).paddingTop(18).paddingInner(1).round(true)(root);
+
+  const svg=d3.select("#tm-svg").attr("width",W).attr("height",H);
+  svg.selectAll("*").remove();
+
+  (root.children||[]).forEach(cn=>{
+    const cc=CCOLORS[cn.data.name]||"#4a5a70";
+    const g=svg.append("g");
+    g.append("rect")
+      .attr("x",cn.x0).attr("y",cn.y0)
+      .attr("width",cn.x1-cn.x0).attr("height",cn.y1-cn.y0)
+      .attr("fill","rgba(255,255,255,.02)").attr("rx",3);
+    const cw=cn.x1-cn.x0;
+    if(cw>30){
+      g.append("text").attr("x",cn.x0+4).attr("y",cn.y0+13)
+        .attr("fill",cc).attr("font-size",9).attr("font-weight","700")
+        .attr("opacity",.85)
+        .text(cn.data.name.length>8?cn.data.name.slice(0,8)+"…":cn.data.name);
+    }
+    cn.leaves().forEach(leaf=>{
+      const o=leaf.data.data;
+      const lw=leaf.x1-leaf.x0,lh=leaf.y1-leaf.y0;
+      if(lw<2||lh<2)return;
+      const cell=g.append("g").attr("class","tm-cell").style("cursor","pointer")
+        .on("mouseover",ev=>showTip(ev,o))
+        .on("mousemove",ev=>moveTip(ev))
+        .on("mouseout",hideTip)
+        .on("click",()=>showDetail(o));
+      const fc=scoreColor(o.score);
+      cell.append("rect")
+        .attr("x",leaf.x0+.5).attr("y",leaf.y0+.5)
+        .attr("width",Math.max(0,lw-1)).attr("height",Math.max(0,lh-1))
+        .attr("fill",fc).attr("opacity",.82).attr("rx",2);
+      // top progress line
+      if(lw>18&&lh>10){
+        cell.append("rect")
+          .attr("x",leaf.x0+.5).attr("y",leaf.y0+.5)
+          .attr("width",Math.max(0,lw-1)*(o.score/10))
+          .attr("height",2).attr("fill","rgba(255,255,255,.35)").attr("rx",1);
+      }
+      if(lw>26&&lh>14){
+        const fs=Math.min(11,Math.max(7,Math.min(lw/5,lh/2.5)));
+        const lbl=lw>48?o.name:(o.name.length>4?o.name.slice(0,4)+"…":o.name);
+        cell.append("text")
+          .attr("x",leaf.x0+lw/2).attr("y",leaf.y0+lh/2+fs*.35)
+          .attr("text-anchor","middle").attr("fill","rgba(255,255,255,.92)")
+          .attr("font-size",fs).attr("font-weight","600")
+          .attr("font-family","Noto Sans SC,sans-serif").text(lbl);
+        if(lh>26){
+          cell.append("text")
+            .attr("x",leaf.x0+lw/2).attr("y",leaf.y0+lh/2+fs*.35+fs+1)
+            .attr("text-anchor","middle").attr("fill","rgba(255,255,255,.65)")
+            .attr("font-size",Math.min(9,fs-1)).attr("font-family","JetBrains Mono,monospace")
+            .text(o.score.toFixed(1));
+        }
+      }
+    });
+  });
+  updateStatus();
+}
+
+// ===== TABLE =====
+function renderTable(){
+  const disp=getSorted(getDisplay());
+  const tb=document.getElementById("tbl-body");
+  tb.innerHTML="";
+  disp.forEach(o=>{
+    const rl=getRisk(o.score);
+    const sc=scoreColor(o.score);
+    const cc=CCOLORS[o.cat]||"#4a5a70";
+    const tr=document.createElement("tr");
+    tr.style.cursor="pointer";tr.onclick=()=>showDetail(o);
+    tr.innerHTML=`
+      <td style="font-weight:500;color:#d4dde8">${o.name}</td>
+      <td><span style="color:${cc};font-size:11px">${o.cat}</span></td>
+      <td><span class="score-chip" style="background:${sc}">${o.score.toFixed(1)}</span></td>
+      <td><span style="color:${rl.color};font-size:11px;font-weight:600">${rl.label}</span></td>
+      <td><div class="risk-bar-row"><div class="risk-bar-bg"><div class="risk-bar-f" style="width:${o.score*10}%;background:${sc}"></div></div></div></td>
+    `;
+    tb.appendChild(tr);
+  });
+  updateStatus();
+}
+
+function render(){
+  if(curView==="treemap")renderTreemap();
+  else renderTable();
+  renderCategories();
+  updateStats();
+}
+
+// ===== TOOLTIP =====
+function showTip(ev,o){
+  const rl=getRisk(o.score);
+  const t=document.getElementById("tip");
+  t.innerHTML=`
+    <div class="tip-name">${o.name}</div>
+    <div class="tip-cat">${o.cat}</div>
+    <div class="tip-score-row">
+      <span class="tip-score-n" style="color:${scoreColor(o.score)}">${o.score.toFixed(1)}</span>
+      <span class="tip-score-l">/ 10分<br>AI风险敞口</span>
+    </div>
+    <span class="tip-badge" style="color:${rl.color};background:${rl.bg}">${rl.label}</span>
+    <div class="tip-rat">${o.rationale}</div>
+    <div class="tip-edit">点击查看详情 · 可手动修改评分</div>
+  `;
+  moveTip(ev);t.classList.add("on");
+}
+function moveTip(ev){
+  const t=document.getElementById("tip");
+  const x=Math.min(ev.clientX+12,window.innerWidth-230),y=Math.min(ev.clientY-8,window.innerHeight-180);
+  t.style.left=x+"px";t.style.top=y+"px";
+}
+function hideTip(){document.getElementById("tip").classList.remove("on");}
+
+// ===== DETAIL =====
+function showDetail(o){
+  curDetail=o;
+  const rl=getRisk(o.score);
+  const cc=CCOLORS[o.cat]||"#4a5a70";
+  const sc=scoreColor(o.score);
+
+  const EXPL={
+    1:"工作几乎完全是体力劳动，AI对日常工作基本没有影响。",
+    2:"工作以体力或人际互动为主，AI仅在边缘任务上提供少量帮助。",
+    3:"主要是体力或人际互动类工作，AI无法触及核心工作内容。",
+    4:"工作以现场操作为主，AI可辅助文书等边缘任务。",
+    5:"体力/人际工作与知识工作混合，AI可在信息处理部分实质帮助。",
+    6:"体力与知识工作混合，AI已带来效率提升但现场不可缺少。",
+    7:"主要知识型工作，AI工具已很有用，工作效率可大幅提升。",
+    8:"工作几乎完全在电脑上完成，AI可辅助大多数核心任务。",
+    9:"工作完全数字化，AI已能处理绝大部分工作内容。",
+    10:"例行信息处理，完全数字化，AI目前已能完成大部分工作。"
+  };
+
+  const sims=occ.filter(x=>x.cat===o.cat&&x.id!==o.id).sort((a,b)=>b.score-a.score).slice(0,5);
+
+  let html=`
+    <div class="d-score-ring" style="border-color:${sc};background:${sc}22">
+      <span style="color:${sc}">${o.score.toFixed(1)}</span>
+    </div>
+    <div class="d-name">${o.name}</div>
+    <div class="d-cat" style="color:${cc}">${o.cat}</div>
+    <span class="d-badge" style="color:${rl.color};background:${rl.bg};border-color:${rl.color}33">${rl.label}</span>
+    
+    <div class="d-sec">
+      <div class="d-sec-t">风险程度</div>
+      <div class="d-meter">
+        <span style="font-size:10px;color:var(--text3);width:14px">0</span>
+        <div class="d-meter-bg"><div class="d-meter-f" style="width:${o.score*10}%;background:${sc}"></div></div>
+        <span style="font-size:10px;color:var(--text3);width:20px">10</span>
+      </div>
+    </div>
+
+    <div class="d-sec">
+      <div class="d-sec-t">评分依据</div>
+      <div class="d-sec-body">${o.rationale}</div>
+    </div>
+
+    <div class="d-sec">
+      <div class="d-sec-t">风险说明</div>
+      <div class="d-sec-body">${EXPL[Math.round(o.score)]||EXPL[5]}</div>
+    </div>
+
+    <div class="d-sec">
+      <div class="d-sec-t">手动修改评分</div>
+      <div class="d-edit-row">
+        <span class="d-edit-label">新分值 (0–10)：</span>
+        <input class="d-edit-inp" type="number" id="edit-inp" min="0" max="10" step="0.5" value="${o.score}">
+        <button class="d-edit-btn" onclick="applyEdit()">确认</button>
+      </div>
+    </div>
+  `;
+
+  if(sims.length){
+    html+=`<div class="d-sec"><div class="d-sec-t">同类职业对比</div>`;
+    sims.forEach(s=>{
+      html+=`<div class="d-similar-item" onclick="showDetail(occ.find(x=>x.id===${s.id}))">
+        <span style="font-size:11px;color:var(--text2)">${s.name}</span>
+        <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${scoreColor(s.score)}">${s.score.toFixed(1)}</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  document.getElementById("d-content").innerHTML=html;
+  document.getElementById("detail").classList.add("open");
+}
+
+function applyEdit(){
+  if(!curDetail)return;
+  const inp=document.getElementById("edit-inp");
+  const v=parseFloat(inp.value);
+  if(isNaN(v)||v<0||v>10){showToast("⚠️ 请输入 0–10 之间的数值");return;}
+  curDetail.score=parseFloat(v.toFixed(1));
+  showToast(`✅ 已将「${curDetail.name}」评分更新为 ${curDetail.score}`);
+  render();
+  showDetail(curDetail);// refresh panel
+}
+
+function closeDetail(){document.getElementById("detail").classList.remove("open");curDetail=null;}
+
+// ===== CATEGORIES =====
+function renderCategories(){
+  const cats=[...new Set(occ.map(o=>o.cat))];
+  const list=document.getElementById("cat-list");
+  list.innerHTML="";
+  const all=document.createElement("div");
+  all.className="cat-all"+(selCat===null?" active":"");
+  all.innerHTML=`<div class="cat-dot" style="background:#4a5a70"></div><span class="cat-name">全部职业</span><span class="cat-cnt">${occ.length}</span>`;
+  all.onclick=()=>{selCat=null;renderCategories();render();};
+  list.appendChild(all);
+  cats.forEach(cat=>{
+    const items=occ.filter(o=>o.cat===cat);
+    const avg=(items.reduce((s,o)=>s+o.score,0)/items.length);
+    const cc=CCOLORS[cat]||"#4a5a70";
+    const el=document.createElement("div");
+    el.className="cat-item"+(selCat===cat?" active":"");
+    el.innerHTML=`
+      <div class="cat-dot" style="background:${cc}"></div>
+      <span class="cat-name">${cat}</span>
+      <div class="cat-meta">
+        <span class="cat-cnt">${items.length}</span>
+        <span class="cat-avg" style="color:${scoreColor(avg)}">${avg.toFixed(1)}</span>
+      </div>
+    `;
+    el.onclick=()=>{selCat=(selCat===cat?null:cat);renderCategories();render();};
+    list.appendChild(el);
+  });
+}
+
+// ===== STATS =====
+function updateStats(){
+  const d=getDisplay();
+  const n=d.length;
+  if(!n)return;
+  const avg=(d.reduce((s,o)=>s+o.score,0)/n);
+  const high=d.filter(o=>o.score>=7).length;
+  const mid=d.filter(o=>o.score>=4&&o.score<7).length;
+  const low=d.filter(o=>o.score<4).length;
+  document.getElementById("sv-avg").textContent=avg.toFixed(2);
+  document.getElementById("sv-high").textContent=((high/n)*100).toFixed(1)+"%";
+  document.getElementById("sv-mid").textContent=((mid/n)*100).toFixed(1)+"%";
+  document.getElementById("sv-low").textContent=((low/n)*100).toFixed(1)+"%";
+  document.getElementById("hv-avg").textContent=avg.toFixed(2);
+  document.getElementById("hv-high").textContent=((high/n)*100).toFixed(1)+"%";
+
+  // distribution
+  const bins=Array(11).fill(0);
+  d.forEach(o=>bins[Math.min(10,Math.round(o.score))]++);
+  const mx=Math.max(...bins,1);
+  const chart=document.getElementById("dist-chart");
+  chart.innerHTML="";
+  bins.forEach((cnt,score)=>{
+    if(cnt===0)return;
+    const pct=(cnt/mx*100).toFixed(0);
+    const row=document.createElement("div");
+    row.className="dist-row";
+    row.innerHTML=`
+      <span class="dist-num">${score}</span>
+      <div class="dist-bg"><div class="dist-fill" style="width:${pct}%;background:${scoreColor(score)}"></div></div>
+      <span class="dist-cnt">${cnt}</span>
+    `;
+    chart.appendChild(row);
+  });
+}
+
+// ===== TOAST =====
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2800);
+}
+
+// ===== RESIZE =====
+window.addEventListener("resize",()=>{if(curView==="treemap")renderTreemap();});
+
+// ===== INIT =====
+renderCategories();
+render();
+</script>
+</body>
+</html>
