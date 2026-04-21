@@ -19,5 +19,6 @@ cn-ai-career-map（中文职业 AI 风险图谱）
 本项目的评估与结论仅供学习与研究参考，可能包含错误或偏差。请勿将本项目内容作为法律、医疗或就业决策的唯一依据。
 
 联系方式
-hezhixin15@gmail.com
+hezhixin15@gmail.com，抖音私信https://v.douyin.com/t1BMEJHysU4
+
 对了跟大家说一件事情，因为我这个网页里面职业太多了ChatGPT和copilot会因为文字太多无法上传，Gemini会忘记部分职业到258左右就会忘记后面有什么职业了，通义千问的qwen3-coder模型可以识别所有职业但是在UI的修改上会出错不知道为什么，而且没办法修正，Claude完全没问题
