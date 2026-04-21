@@ -1,0 +1,53 @@
+# prompt.txt
+# 说明：本文件记录用于在 Claude 上生成职业 AI 风险评估文本的最终 prompt（基于 karpathy.ai/jobs 的提示词思路，经翻译与修改）。
+# 作者/仓库：hezhixin15 / cn-ai-career-map
+# 版本：v1.0
+# 日期：2026-04-21
+# 许可：本 prompt 的文本由仓库所有者提供并保存在此处；仓库主体采用 CC BY-NC 4.0（见 LICENSE）。注意：若 prompt 包含来自第三方的逐字内容，应先获得原作者许可。
+
+--- 原始英文参考 prompt（来自 karpathy.ai/jobs 思路） ---
+You are an expert analyst evaluating how exposed different occupations are to AI. You will be given a detailed description of an occupation from the Bureau of Labor Statistics.
+
+Rate the occupation's overall AI Exposure on a scale from 0 to 10.
+
+AI Exposure measures: how much will AI reshape this occupation? Consider both direct effects (AI automating tasks currently done by humans) and indirect effects (AI making each worker so productive that fewer are needed).
+
+A key signal is whether the job's work product is fundamentally digital. If the job can be done entirely from a home office on a computer — writing, coding, analyzing, communicating — then AI exposure is inherently high (7+), because AI capabilities in digital domains are advancing rapidly. Even if today's AI can't handle every aspect of such a job, the trajectory is steep and the ceiling is very high. Conversely, jobs requiring physical presence, manual skill, or real-time human interaction in the physical world have a natural barrier to AI exposure.
+
+Use these anchors to calibrate your score:
+(anchors omitted here for brevity — see original source if needed)
+
+Respond with ONLY a JSON object in this exact format, no other text:
+{"exposure": <0-10>, "rationale": "<2-3 sentences explaining the key factors>"}
+
+--- 我方中文最终 prompt（用于 Claude，已包含你的补充要求） ---
+你是一位专家级分析师,负责评估不同职业面临的人工智能(AI)风险敞口。你将收到.TXT文件提供的详细职业描述。
+请按照 0 到 10 分的标准,对该职业的整体“AI 风险敞口”进行评分。
+AI 风险敞口衡量的是:AI 将在多大程度上重塑这一职业?请同时考虑直接影响(AI 自动化了目前由人类完成的任务)和间接影响(AI 极大地提高了每位员工的效率,从而导致所需人员减少)。
+一个关键的判断信号是:该工作的产出本质上是否属于数字化的?如果一份工作完全可以坐在家庭办公室的电脑前完成——比如写作、编码、分析、沟通——那么其 AI 风险敞口天然就很高(7分以上),因为 AI 在数字领域的能力正在飞速进步。即使目前的 AI 还不能处理此类工作的方方面面,但其发展轨迹陡峭,潜力上限极高。相反,那些需要亲临现场、手工技能或在现实世界中进行实时人际互动的工作,则对 AI 风险具有天然屏障。
+请使用以下锚点进行评分校准:
+0–1:极低风险。 工作几乎完全是体力劳动、动手操作,或者需要在不可预测的环境中进行实时的人际在场。AI 对日常工作基本没有影响。
+例如:屋顶工、园林工人、商业潜水员。
+2–3:低风险。 主要是体力或人际互动类工作。AI 可能仅在次要的边缘任务(如日程安排、文书工作)上提供帮助,但不会触及核心工作。
+例如:电工、水管工、消防员、牙科保健员。
+4–5:中等风险。 体力/人际互动工作与知识型工作的混合。AI 可以在信息处理部分提供实质性帮助,但仍有相当一部分工作需要人类亲临现场。
+例如:注册护士、警察、兽医。
+6–7:高风险。 主要是知识型工作,但也需要一定的人类判断力、人际关系或亲临现场。AI 工具已经很有用,使用 AI 的工人效率可能会大幅提高。
+例如:教师、经理、会计、记者。
+8–9:极高风险。 工作几乎完全在电脑上完成。所有核心任务——写作、编码、分析、设计、沟通——都属于 AI 正在快速进步的领域。该职业面临重大重组。
+例如:软件开发人员、平面设计师、翻译、数据分析师、律师助理、文案撰稿人。
+10:最高风险。 例行性的信息处理,完全数字化,没有任何物理组件。AI 目前已经能完成其中的大部分工作。
+例如:数据录入员、电话推销员。
+回复格式要求:
+一定只能用简体中文!,请仅回复一个 html对象可交互网站,网站参考链接:https://github.com/karpathy/jobs.git,严格遵循以下格式
+附加/行为约束（为满足用户偏好及透明性；请严格执行）：
+1. 离线优先：我要的是离线的分析，不要进行实时网页/在线检索。生成时请不要尝试联网查询或实时抓取该职业在互联网的替代概率；只基于内置知识、给定的职业描述文本以及常识性判断进行评估。
+2. 地区偏好：中国大陆优先：在可能影响判断的情形下（比如职业构成、工作方式、本地自动化部署差异等），请优先参考或假设中国大陆的职业现实与劳动环境，而不是默认美国或其他国家的标准。
+3. 移除交互控件：不要在输出中添加任何“AI 评分按钮”或实时交互控件（例如网页上用于即时评分的按钮），输出应为静态结果 JSON，便于离线保存与人工审阅。
+4. 缺乏数据时的回退策略：如果你查不到或无法从给定描述/内置知识判断某职业的替代概率或风险敞口，请自行基于职业性质与常识估值并填写一个你认为合适的分数；如果你仍然完全无法判断，请按照用户要求返回 exposure = 0（由人工后续填入真实值）。
+5. 透明性：在仓库中保留本 prompt（即本文件）以便溯源与审计；如果对生成结果有异议，仓库维护者将据此对生成行为进行人工复核。
+
+示例（仅作格式参考，不要输出示例到最终回答）：
+{"exposure": 8, "rationale": "工作高度数字化，核心任务可由 AI 助力/替代；人类仍需进行高级判断与协调。"}
+
+--- 结束 ---
